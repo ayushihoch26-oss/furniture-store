@@ -1,5 +1,7 @@
-import categoryRepository from "../repository/category.repository.js";
 
+import * as categoryRepository from "../repository/category.repository.js";
+
+// Custom error
 class AppError extends Error {
   constructor(message, statusCode = 500) {
     super(message);
@@ -7,170 +9,233 @@ class AppError extends Error {
   }
 }
 
-const RESERVED_NAME = "Other"; // used by the product filters for uncategorised items
+// Get active categories (Public)
+export const getCategoryOptions = async () => {
+  const categories = await categoryRepository.activeWithCounts();
 
-const toPage = (value) => Math.max(Number(value) || 1, 1);
-const toLimit = (value, fallback) =>
-  Math.min(Math.max(Number(value) || fallback, 1), 100);
-
-const toBoolean = (value) => {
-  if (value === true || value === "true") return true;
-  if (value === false || value === "false") return false;
-  return undefined;
+  return categories.map((item) => ({
+    id: item.id,
+    name: item.category,
+    count: item.count,
+  }));
 };
 
-// Shape sent to the frontend
-const formatCategory = (category, productCount = 0) => ({
-  id: category.id,
-  name: category.name,
-  description: category.description,
-  image: category.image,
-  isActive: Boolean(category.isActive),
-  productCount,
-  createdAt: category.createdAt,
-});
+// Get all categories (Admin)
+export const getAllCategories = async (query) => {
+  const page = Math.max(Number(query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(query.limit) || 8, 1), 100);
 
-// Validate + clean the data. partial = true is used for updates.
-const validateCategory = (data = {}, partial = false) => {
-  const clean = {};
+  let isActive;
 
-  if (!partial || data.name !== undefined) {
-    const name = String(data.name ?? "").trim();
-    if (!name) throw new AppError("name is required", 400);
+  if (query.status === "active") {
+    isActive = true;
+  } else if (query.status === "inactive") {
+    isActive = false;
+  }
+
+  const result = await categoryRepository.findAllPaginated({
+    search: query.search,
+    isActive,
+    sort: query.sort,
+    page,
+    limit,
+  });
+
+  const counts = await categoryRepository.productCounts(
+    result.categories.map((item) => item.name)
+  );
+
+  return {
+    categories: result.categories.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      image: item.image,
+      isActive: Boolean(item.isActive),
+      productCount: counts[item.name] || 0,
+      createdAt: item.createdAt,
+    })),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
+  };
+};
+
+// Get category statistics (Admin)
+export const getCategoryStats = async () => {
+  const total = await categoryRepository.countCategories();
+  const active = await categoryRepository.countCategories({ isActive: true });
+  const inactive = await categoryRepository.countCategories({ isActive: false });
+
+  return { total, active, inactive };
+};
+
+// Get category by ID
+export const getCategoryById = async (id) => {
+  const category = await categoryRepository.findById(id);
+
+  if (!category) {
+    throw new AppError("Category not found", 404);
+  }
+
+  const productCount = await categoryRepository.countProducts(category.name);
+
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    image: category.image,
+    isActive: Boolean(category.isActive),
+    productCount,
+    createdAt: category.createdAt,
+  };
+};
+
+// Create category (Admin)
+export const createCategory = async (data) => {
+  const name = String(data.name || "").trim();
+
+  if (!name) {
+    throw new AppError("Name is required", 400);
+  }
+
+  if (name.length > 60) {
+    throw new AppError("Name must be 60 characters or less", 400);
+  }
+
+  if (name.toLowerCase() === "other") {
+    throw new AppError('"Other" is a reserved name', 400);
+  }
+
+  const existing = await categoryRepository.findByName(name);
+
+  if (existing) {
+    throw new AppError("Category already exists", 400);
+  }
+
+  const category = await categoryRepository.create({
+    name,
+    description: data.description ? String(data.description).trim() : null,
+    image: data.image ? String(data.image).trim() : null,
+    isActive: data.isActive === undefined ? true : data.isActive,
+  });
+
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    image: category.image,
+    isActive: Boolean(category.isActive),
+    productCount: 0,
+    createdAt: category.createdAt,
+  };
+};
+
+// Update category (Admin)
+export const updateCategory = async (id, data) => {
+  const category = await categoryRepository.findById(id);
+
+  if (!category) {
+    throw new AppError("Category not found", 404);
+  }
+
+  const categoryData = {};
+
+  if (data.name !== undefined) {
+    const name = String(data.name).trim();
+
+    if (!name) {
+      throw new AppError("Name is required", 400);
+    }
+
     if (name.length > 60) {
-      throw new AppError("name must be 60 characters or less", 400);
+      throw new AppError("Name must be 60 characters or less", 400);
     }
-    if (name.toLowerCase() === RESERVED_NAME.toLowerCase()) {
-      throw new AppError(`"${RESERVED_NAME}" is a reserved name`, 400);
+
+    if (name.toLowerCase() === "other") {
+      throw new AppError('"Other" is a reserved name', 400);
     }
-    clean.name = name;
+
+    if (name !== category.name) {
+      const existing = await categoryRepository.findByName(name);
+
+      if (existing && existing.id !== category.id) {
+        throw new AppError("Category already exists", 400);
+      }
+    }
+
+    categoryData.name = name;
   }
 
   if (data.description !== undefined) {
-    clean.description = data.description
+    categoryData.description = data.description
       ? String(data.description).trim()
       : null;
   }
 
   if (data.image !== undefined) {
-    clean.image = data.image ? String(data.image).trim() : null;
+    categoryData.image = data.image ? String(data.image).trim() : null;
   }
 
   if (data.isActive !== undefined) {
-    const isActive = toBoolean(data.isActive);
-    if (isActive === undefined) throw new AppError("Invalid status", 400);
-    clean.isActive = isActive;
+    if (
+      data.isActive !== true &&
+      data.isActive !== false &&
+      data.isActive !== "true" &&
+      data.isActive !== "false"
+    ) {
+      throw new AppError("Invalid status", 400);
+    }
+
+    categoryData.isActive =
+      data.isActive === true || data.isActive === "true";
   }
 
-  return clean;
+  await categoryRepository.update(category, categoryData);
+
+  const productCount = await categoryRepository.countProducts(categoryData.name || category.name);
+
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    image: category.image,
+    isActive: Boolean(category.isActive),
+    productCount,
+    createdAt: category.createdAt,
+  };
 };
 
-const categoryService = {
-  // ================= PUBLIC =================
+// Delete category (Admin)
+export const deleteCategory = async (id) => {
+  const category = await categoryRepository.findById(id);
 
-  // Active categories for dropdowns
-  async options() {
-    const categories = await categoryRepository.activeWithCounts();
-    return categories.map(({ id, category, count }) => ({
-      id,
-      name: category,
-      count,
-    }));
-  },
+  if (!category) {
+    throw new AppError("Category not found", 404);
+  }
 
-  // ================= ADMIN =================
+  const productCount = await categoryRepository.countProducts(category.name);
 
-  async adminList(query = {}) {
-    const result = await categoryRepository.findAll({
-      search: query.search,
-      isActive:
-        query.status === "active"
-          ? true
-          : query.status === "inactive"
-            ? false
-            : undefined,
-      sort: query.sort,
-      page: toPage(query.page),
-      limit: toLimit(query.limit, 8),
-    });
-
-    const counts = await categoryRepository.productCounts(
-      result.categories.map((category) => category.name),
+  if (productCount > 0) {
+    throw new AppError(
+      `Cannot delete: ${productCount} product(s) use this category`,
+      400
     );
+  }
 
-    return {
-      categories: result.categories.map((category) =>
-        formatCategory(category, counts[category.name] || 0),
-      ),
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages,
-    };
-  },
+  await categoryRepository.delete(id);
 
-  async stats() {
-    const [total, active, inactive] = await Promise.all([
-      categoryRepository.count(),
-      categoryRepository.count({ isActive: true }),
-      categoryRepository.count({ isActive: false }),
-    ]);
-
-    return { total, active, inactive };
-  },
-
-  async getById(id) {
-    const category = await categoryRepository.findById(id);
-    if (!category) throw new AppError("Category not found", 404);
-
-    const productCount = await categoryRepository.countProducts(category.name);
-    return formatCategory(category, productCount);
-  },
-
-  async create(data) {
-    const categoryData = validateCategory(data);
-
-    const existing = await categoryRepository.findByName(categoryData.name);
-    if (existing) throw new AppError("Category already exists", 409);
-
-    const category = await categoryRepository.create(categoryData);
-    return formatCategory(category, 0);
-  },
-
-  async update(id, data) {
-    const category = await categoryRepository.findById(id);
-    if (!category) throw new AppError("Category not found", 404);
-
-    const categoryData = validateCategory(data, true);
-
-    if (categoryData.name && categoryData.name !== category.name) {
-      const existing = await categoryRepository.findByName(categoryData.name);
-      if (existing && existing.id !== category.id) {
-        throw new AppError("Category already exists", 409);
-      }
-    }
-
-    await categoryRepository.update(category, categoryData);
-
-    const productCount = await categoryRepository.countProducts(category.name);
-    return formatCategory(category, productCount);
-  },
-
-  async remove(id) {
-    const category = await categoryRepository.findById(id);
-    if (!category) throw new AppError("Category not found", 404);
-
-    const productCount = await categoryRepository.countProducts(category.name);
-    if (productCount > 0) {
-      throw new AppError(
-        `Cannot delete: ${productCount} product(s) use this category`,
-        409,
-      );
-    }
-
-    await categoryRepository.delete(id);
-    return { message: "Category deleted successfully" };
-  },
+  return { message: "Category deleted successfully" };
 };
 
-export default categoryService;
+// Default export
+export default {
+  getCategoryOptions,
+  getAllCategories,
+  getCategoryStats,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+};

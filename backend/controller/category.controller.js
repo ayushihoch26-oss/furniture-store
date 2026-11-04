@@ -20,7 +20,7 @@ export const options = async (req, res, next) => {
 // Get All Categories (Admin)
 export const adminList = async (req, res, next) => {
   try {
-    const result = await categoryService.adminList(getParams(req));
+    const result = await categoryService.getAllCategories(getParams(req));
     res.json(result);
   } catch (err) {
     next(err);
@@ -30,7 +30,7 @@ export const adminList = async (req, res, next) => {
 // Category Stats (Admin)
 export const stats = async (req, res, next) => {
   try {
-    const result = await categoryService.stats();
+    const result = await categoryService.getCategoryStats();
     res.json(result);
   } catch (err) {
     next(err);
