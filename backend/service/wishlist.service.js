@@ -25,9 +25,24 @@ export const getWishlistByUserId = async (userId) => {
   return await wishlistRepository.findByUserId(userId);
 };
 
-// Get all wishlists (Admin)
+// Get all wishlists (Admin) in the flat shape expected by the admin table.
 export const getAllWishlists = async () => {
-  return await wishlistRepository.getAllWishlists();
+  const wishlists = await wishlistRepository.getAllWishlists();
+
+  return wishlists.map((wishlist) => ({
+    id: wishlist.id,
+    userId: wishlist.userId,
+    customer: wishlist.user
+      ? `${wishlist.user.firstName} ${wishlist.user.lastName || ""}`.trim()
+      : null,
+    email: wishlist.user?.email || null,
+    productId: wishlist.productId,
+    productName: wishlist.product?.name || null,
+    category: wishlist.product?.category || null,
+    price: wishlist.product ? Number(wishlist.product.price) : null,
+    image: wishlist.product?.image || null,
+    addedAt: wishlist.createdAt,
+  }));
 };
 
 // Add product to wishlist (User)

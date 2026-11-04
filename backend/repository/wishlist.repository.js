@@ -40,7 +40,7 @@ export const getAllWishlists = async () => {
       {
         model: Products,
         as: "product",
-        attributes: ["id", "name", "price", "image"]
+        attributes: ["id", "name", "price", "image", "category"]
       },
       {
         model: Users,
@@ -102,6 +102,7 @@ export const searchWishlistByProductName = async (productName) => {
 }
 
 // pagination in admin side for wishlist
+// pagination in admin side for wishlist
 export const findAllPaginated = async (limit = 8, page = 1) => {
   page = Math.max(Number(page) || 1, 1);
   limit = Math.min(Math.max(Number(limit) || 8, 1), 100);
@@ -110,8 +111,16 @@ export const findAllPaginated = async (limit = 8, page = 1) => {
 
   const { count, rows } = await Wishlists.findAndCountAll({
     include: [
-      { model: Products, as: "product" },
-      { model: Users, as: "user" }
+      {
+        model: Products,
+        as: "product",
+        attributes: ["id", "name", "price", "image"] // Make sure attributes are explicit
+      },
+      {
+        model: Users,
+        as: "user",
+        attributes: ["id", "firstName", "lastName", "email"] // Explicit attributes
+      }
     ],
     limit,
     offset,
