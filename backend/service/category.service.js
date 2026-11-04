@@ -70,10 +70,11 @@ const categoryService = {
 
   // Active categories for dropdowns
   async options() {
-    const categories = await categoryRepository.findAllActive();
-    return categories.map((category) => ({
-      id: category.id,
-      name: category.name,
+    const categories = await categoryRepository.activeWithCounts();
+    return categories.map(({ id, category, count }) => ({
+      id,
+      name: category,
+      count,
     }));
   },
 

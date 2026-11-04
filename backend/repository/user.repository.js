@@ -1,177 +1,258 @@
+
 import { Op, fn, col, literal } from "sequelize";
-import { Orders } from "../models/index.js";
-import { Users } from "../models/index.js";
+import { Orders, Users } from "../models/index.js";
 
-const userRepository = {
-  findById(id) {
-    return Users.findByPk(id);
-  },
+// Find user by ID
+export async function findById(id) {
+  return await Users.findByPk(id);
+}
 
-  findByIdWithPassword(id) {
-    return Users.scope("withPassword").findByPk(id);
-  },
+// Find user by ID with password
+export async function findByIdWithPassword(id) {
+  return await Users.scope("withPassword").findByPk(id);
+}
 
-  findByEmail(email) {
-    return Users.findOne({ where: { email } });
-  },
+// Find user by email
+export async function findByEmail(email) {
+  return await Users.findOne({
+    where: { email }
+  });
+}
 
-  findByEmailWithPassword(email) {
-    return Users.scope("withPassword").findOne({ where: { email } });
-  },
+// Find user by email with password
+export async function findByEmailWithPassword(email) {
+  return await Users.scope("withPassword").findOne({
+    where: { email }
+  });
+}
 
-  // Forgot password: user whose emailed token matches AND has not expired
-  findByValidResetToken(tokenHash) {
-    return Users.findOne({
-      where: {
-        resetPasswordToken: tokenHash,
-        resetPasswordExpires: { [Op.gt]: new Date() },
-      },
-    });
-  },
-
-  // Pagination + search + date filter (used by userService.list)
-  async findAllPaginated({
-    page = 1,
-    limit = 7,
-    search = "",
-    startDate = "",
-    endDate = "",
-    role = "",
-  } = {}) {
-    const where = {};
-
-    if (role) where.role = role; // e.g. only "customer" for the Customers page
-
-    if (search) {
-      where[Op.or] = [
-        { firstName: { [Op.like]: `%${search}%` } },
-        { lastName: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
-        { phone: { [Op.like]: `%${search}%` } },
-      ];
+// Find valid password reset token
+export async function findByValidResetToken(tokenHash) {
+  return await Users.findOne({
+    where: {
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: {
+        [Op.gt]: new Date()
+      }
     }
+  });
+}
 
-    if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate)
-        where.createdAt[Op.gte] = new Date(`${startDate}T00:00:00`);
-      if (endDate) where.createdAt[Op.lte] = new Date(`${endDate}T23:59:59`);
+// Find users with search, pagination and date filter
+export async function findAllPaginated({
+  page = 1,
+  limit = 7,
+  search = "",
+  startDate = "",
+  endDate = "",
+  role = ""
+} = {}) {
+  const where = {};
+
+  if (role) {
+    where.role = role;
+  }
+
+  // Search users
+  if (search) {
+    where[Op.or] = [
+      { firstName: { [Op.like]: `%${search}%` } },
+      { lastName: { [Op.like]: `%${search}%` } },
+      { email: { [Op.like]: `%${search}%` } },
+      { phone: { [Op.like]: `%${search}%` } }
+    ];
+  }
+
+  // Filter by date
+  if (startDate || endDate) {
+    where.createdAt = {};
+  }
+
+  if (startDate) {
+    where.createdAt[Op.gte] = new Date(startDate + "T00:00:00");
+  }
+
+  if (endDate) {
+    where.createdAt[Op.lte] = new Date(endDate + "T23:59:59");
+  }
+
+  const result = await Users.findAndCountAll({
+    where: where,
+    limit: limit,
+    offset: (page - 1) * limit,
+    order: [["createdAt", "DESC"]]
+  });
+
+  const totalPages = Math.ceil(result.count / limit);
+
+  return {
+    users: result.rows,
+    total: result.count,
+    page: page,
+    limit: limit,
+    totalPages: totalPages
+  };
+}
+
+// Get customer statistics
+export const getUserStats = async () => {
+  const startOfMonth = new Date();
+
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const total = await Users.count({
+    where: { role: "customer" }
+  });
+
+  const newThisMonth = await Users.count({
+    where: {
+      role: "customer",
+      createdAt: {
+        [Op.gte]: startOfMonth
+      }
     }
+  });
 
-    const { rows, count } = await Users.findAndCountAll({
-      where,
-      limit,
-      offset: (page - 1) * limit,
-      order: [["createdAt", "DESC"]],
-    });
+  return {
+    total: total,
+    newThisMonth: newThisMonth
+  };
+}
 
-    return {
-      users: rows,
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit),
-    };
-  },
+// Create user
+export const create = async (data) => {
+  return await Users.create(data);
+}
 
-  // Used by userService.list (customers only, so admins are not counted)
-  async getUserStats() {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+// Update user
+export const update = async (id, data) => {
+  const user = await Users.findByPk(id);
 
-    const customers = { role: "customer" };
+  if (!user) {
+    return null;
+  }
 
-    const [total, newThisMonth] = await Promise.all([
-      Users.count({ where: customers }),
-      Users.count({
-        where: { ...customers, createdAt: { [Op.gte]: startOfMonth } },
-      }),
-    ]);
+  return await user.update(data);
+}
 
-    return { total, newThisMonth };
-  },
+// Get order counts for users
+export const getOrderCountsByUserIds = async (userIds = []) => {
+  if (userIds.length === 0) {
+    return {};
+  }
 
-  create(data) {
-    return Users.create(data);
-  },
-
-  async update(id, data) {
-    const user = await Users.findByPk(id);
-    if (!user) return null;
-    return user.update(data);
-  },
-
-  async getOrderCountsByUserIds(userIds = []) {
-    if (!userIds.length) return {};
-
-    const rows = await Orders.findAll({
-      attributes: [
-        "userId",
-        [fn("COUNT", col("id")), "totalOrders"],
-        [
-          fn(
-            "SUM",
-            literal("CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END"),
-          ),
-          "completedOrders",
-        ],
-        [
-          fn(
-            "SUM",
-            literal("CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END"),
-          ),
-          "canceledOrders",
-        ],
-        [fn("MAX", col("createdAt")), "lastPurchaseAt"],
-        [
-          fn(
-            "SUM",
-            literal("CASE WHEN status <> 'Cancelled' THEN total ELSE 0 END"),
-          ),
-          "totalSpend",
-        ],
+  const rows = await Orders.findAll({
+    attributes: [
+      "userId",
+      [fn("COUNT", col("id")), "totalOrders"],
+      [
+        fn(
+          "SUM",
+          literal("CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END")
+        ),
+        "completedOrders"
       ],
-      where: { userId: { [Op.in]: userIds } },
-      group: ["userId"],
-      raw: true,
-    });
+      [
+        fn(
+          "SUM",
+          literal("CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END")
+        ),
+        "canceledOrders"
+      ],
+      [fn("MAX", col("createdAt")), "lastPurchaseAt"],
+      [
+        fn(
+          "SUM",
+          literal("CASE WHEN status <> 'Cancelled' THEN total ELSE 0 END")
+        ),
+        "totalSpend"
+      ]
+    ],
+    where: {
+      userId: {
+        [Op.in]: userIds
+      }
+    },
+    group: ["userId"],
+    raw: true
+  });
 
-    return Object.fromEntries(rows.map((row) => [row.userId, row]));
-  },
+  const result = {};
 
-  // Service calls deleteById; returns the deleted user or null
-  async deleteById(id) {
-    const user = await Users.findByPk(id);
-    if (!user) return null;
-    await user.destroy();
-    return user;
-  },
-  // Customers registered in the last 14 days, grouped per day
-  // returns { lastWeek: [7 numbers], thisWeek: [7 numbers] } (oldest day first)
-  async getCustomerOverview() {
-    const DAY = 24 * 60 * 60 * 1000;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    result[row.userId] = row;
+  }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date(today.getTime() - 13 * DAY); // 14 days incl. today
+  return result;
+}
 
-    const rows = await Users.findAll({
-      where: { role: "customer", createdAt: { [Op.gte]: start } },
-      attributes: ["createdAt"],
-      raw: true,
-    });
+// Delete user
+export const deleteById=async(id)=> {
+  const user = await Users.findByPk(id);
 
-    const counts = Array(14).fill(0);
-    rows.forEach((row) => {
-      const d = new Date(row.createdAt); 
-      d.setHours(0, 0, 0, 0);
-      const index = Math.round((d - start) / DAY);
-      if (index >= 0 && index < 14) counts[index] += 1;
-    });
+  if (!user) {
+    return null;
+  }
 
-    return { lastWeek: counts.slice(0, 7), thisWeek: counts.slice(7) };
-  },
+  await user.destroy();
+
+  return user;
+}
+
+// Get customer overview for last 14 days
+export const getCustomerOverview = async () =>  {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  const start = new Date(today.getTime() - 13 * DAY);
+
+  const rows = await Users.findAll({
+    where: {
+      role: "customer",
+      createdAt: {
+        [Op.gte]: start
+      }
+    },
+    attributes: ["createdAt"],
+    raw: true
+  });
+
+  const counts = Array(14).fill(0);
+
+  for (let i = 0; i < rows.length; i++) {
+    const date = new Date(rows[i].createdAt);
+
+    date.setHours(0, 0, 0, 0);
+
+    const index = Math.round((date - start) / DAY);
+
+    if (index >= 0 && index < 14) {
+      counts[index] = counts[index] + 1;
+    }
+  }
+
+  return {
+    lastWeek: counts.slice(0, 7),
+    thisWeek: counts.slice(7)
+  };
+}
+
+export default {
+  findById,
+  findByIdWithPassword,
+  findByEmail,
+  findByEmailWithPassword,
+  findByValidResetToken,
+  findAllPaginated,
+  getUserStats,
+  create,
+  update,
+  getOrderCountsByUserIds,
+  deleteById,
+  getCustomerOverview
 };
-
-export default userRepository;

@@ -22,7 +22,7 @@ export const findPaginated = async ({
   if (subject) where.subject = subject;
 
   // search   name, email, phone, subject, message
-  if (search) {
+  if (search.trim()) {
     where[Op.or] = [
       { name: { [Op.like]: `%${search}%` } },
       { email: { [Op.like]: `%${search}%` } },
@@ -40,27 +40,47 @@ export const findPaginated = async ({
   }
 
   //pagination and sorting
-  const direction = sortOrder === "asc" ? "ASC" : "DESC";
-  const { rows, count } = await ContactUs.findAndCountAll({
+  const direction = sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
+  const result = await ContactUs.findAndCountAll({
     where,
     order: [["createdAt", direction]],
-    offset: (page - 1) * limit,
     limit,
+    offset: (page - 1) * limit,
   });
-  return { rows, count };
+
+  return result;
 };
+
+// statcard
+export const getStats = async () => {
+  const [total, newcount, readcount, repliedcount] = await Promise.all([
+    ContactUs.count(),
+    ContactUs.count({ where: { status: "New" } }),
+    ContactUs.count({ where: { status: "Read" } }),
+    ContactUs.count({ where: { status: "Replied" } }),
+  ]);
+
+  return { total, new: newcount, read: readcount, replied: repliedcount };
+};
+
+// admin get one message by id
+export const findById = async (id)=>{
+   return ContactUs.findByPk(id);
+}
 
 export const updateStatus = async (id, status) => {
   const message = await ContactUs.findByPk(id);
   if (!message) return null;
-  return message.update({ status });
+  await message.update({ status });
+  return message;
 };
 
 //delete admin message
 export const remove = async (id) => {
   const message = await ContactUs.findByPk(id);
   if (!message) return null;
-  return message.destroy();
+  await message.destroy();
+  return message;
 };
 
-export default { create, findPaginated, updateStatus, remove };
+export default { create, findPaginated, updateStatus, remove, getStats, findById };

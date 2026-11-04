@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import {
   Alert,
@@ -225,29 +225,29 @@ export default function CartTable({
 
   const paperSx = darkMode
     ? {
-        bgcolor: theme.card,
-        color: theme.text,
-        backgroundImage: "none",
-      }
+      bgcolor: theme.card,
+      color: theme.text,
+      backgroundImage: "none",
+    }
     : {};
 
   const fieldSx = darkMode
     ? {
-        "& .MuiInputBase-root": { color: theme.text },
-        "& .MuiInputBase-input": { colorScheme: "dark" },
-        "& .MuiInputLabel-root": { color: theme.muted },
-        "& .MuiInputLabel-root.Mui-focused": { color: BROWN },
-        "& .MuiOutlinedInput-notchedOutline": {
-          borderColor: theme.border,
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: theme.muted,
-        },
-        "& .Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: BROWN,
-        },
-        "& .MuiSvgIcon-root": { color: theme.muted },
-      }
+      "& .MuiInputBase-root": { color: theme.text },
+      "& .MuiInputBase-input": { colorScheme: "dark" },
+      "& .MuiInputLabel-root": { color: theme.muted },
+      "& .MuiInputLabel-root.Mui-focused": { color: BROWN },
+      "& .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.border,
+      },
+      "&:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme.muted,
+      },
+      "& .Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: BROWN,
+      },
+      "& .MuiSvgIcon-root": { color: theme.muted },
+    }
     : {};
 
   const menuProps = {
@@ -264,6 +264,12 @@ export default function CartTable({
         page: String(currentPage),
         limit: String(PAGE_SIZE),
         status: tab,
+        search: search.trim(),
+        minItems: minItems,
+        fromDate: fromDate,
+        toDate: toDate,
+        sortBy: "total",
+        sortOrder: sortOrder,
       });
 
       const result = await apiRequest(`/cart/admin/list?${params.toString()}`, {
@@ -307,7 +313,18 @@ export default function CartTable({
     } finally {
       setLoading(false);
     }
-  }, [currentPage, tab, setCarts, setPage, setSelected]);
+  }, [
+    currentPage,
+    tab,
+    search,
+    minItems,
+    fromDate,
+    toDate,
+    sortOrder,
+    setCarts,
+    setPage,
+    setSelected,
+  ]);
 
   // Fetch on page or tab changes
   useEffect(() => {
@@ -324,50 +341,8 @@ export default function CartTable({
     };
   }, [fetchCarts]);
 
-  // Search, filter and sort loaded rows
-  const visibleRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return rows
-      .filter((cart) => {
-        const customer = cart.customer || "";
-        const cartId = `${cart.cartCode || ""} ${cart.id ?? ""}`;
-
-        const matchesSearch = `${cartId} ${customer}`
-          .toLowerCase()
-          .includes(keyword);
-
-        const itemCount = Number(cart.itemCount ?? cart.items?.length ?? 0);
-
-        const matchesItems = minItems === "" || itemCount >= Number(minItems);
-
-        const date = cart.createdAt ? new Date(cart.createdAt) : null;
-
-        const dateValue =
-          date && !Number.isNaN(date.getTime())
-            ? [
-                date.getFullYear(),
-                String(date.getMonth() + 1).padStart(2, "0"),
-                String(date.getDate()).padStart(2, "0"),
-              ].join("-")
-            : "";
-
-        const matchesFromDate =
-          !fromDate || (dateValue && dateValue >= fromDate);
-
-        const matchesToDate = !toDate || (dateValue && dateValue <= toDate);
-
-        return (
-          matchesSearch && matchesItems && matchesFromDate && matchesToDate
-        );
-      })
-      .sort((a, b) => {
-        const first = Number(a.subtotal || 0);
-        const second = Number(b.subtotal || 0);
-
-        return sortOrder === "asc" ? first - second : second - first;
-      });
-  }, [rows, search, minItems, fromDate, toDate, sortOrder]);
+  // The backend has already searched, filtered, sorted, and paginated these rows.
+  const visibleRows = rows;
 
   // Open a cart dialog
   const openAction = (cart, type) => {
@@ -539,7 +514,10 @@ export default function CartTable({
           >
             <InputBase
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder="Search cart report"
               sx={{
                 flex: 1,
@@ -604,7 +582,10 @@ export default function CartTable({
               size="small"
               value={minItems}
               slotProps={{ htmlInput: { min: 0 } }}
-              onChange={(event) => setMinItems(event.target.value)}
+              onChange={(event) => {
+                setMinItems(event.target.value);
+                setPage(1);
+              }}
               sx={{ mb: 2.5, ...fieldSx }}
             />
 
@@ -617,7 +598,10 @@ export default function CartTable({
               fullWidth
               size="small"
               value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
+              onChange={(event) => {
+                setFromDate(event.target.value);
+                setPage(1);
+              }}
               sx={{ mb: 2, ...fieldSx }}
             />
 
@@ -630,7 +614,10 @@ export default function CartTable({
               fullWidth
               size="small"
               value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
+              onChange={(event) => {
+                setToDate(event.target.value);
+                setPage(1);
+              }}
               sx={fieldSx}
             />
 
@@ -642,6 +629,7 @@ export default function CartTable({
                   setMinItems("");
                   setFromDate("");
                   setToDate("");
+                  setPage(1);
                 }}
                 sx={{
                   color: BROWN,
@@ -670,8 +658,12 @@ export default function CartTable({
           <SquareIconButton
             label="Sort by total"
             theme={theme}
-            onClick={() =>
-              setSortOrder((previous) => (previous === "asc" ? "desc" : "asc"))
+            onClick={() => {
+              setSortOrder((previous) =>
+                previous === "asc" ? "desc" : "asc",
+              );
+              setPage(1);
+            }
             }
           >
             <SwapVert fontSize="small" />
@@ -812,7 +804,7 @@ export default function CartTable({
                   <span>{cart.itemCount ?? cart.items?.length ?? 0}</span>
 
                   <span>{formatDate(cart.createdAt)}</span>
-                  <span>{money(cart.subtotal)}</span>
+                  <span>{money(cart.total ?? cart.subtotal)}</span>
 
                   <Box
                     sx={{
@@ -966,7 +958,7 @@ export default function CartTable({
                   selectedCart.itemCount ?? selectedCart.items?.length ?? 0,
                 ],
                 ["Date", formatDate(selectedCart.createdAt)],
-                ["Subtotal", money(selectedCart.subtotal)],
+                ["Subtotal", money(selectedCart.total ?? selectedCart.subtotal)],
                 ["Status", titleStatus(selectedCart.status)],
               ].map(([label, value]) => (
                 <Box
@@ -1011,7 +1003,7 @@ export default function CartTable({
                     <Typography>
                       {money(
                         item.total ??
-                          Number(item.price) * Number(item.quantity),
+                        Number(item.price) * Number(item.quantity),
                       )}
                     </Typography>
                   </Box>

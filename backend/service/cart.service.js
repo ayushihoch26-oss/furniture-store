@@ -1,206 +1,219 @@
+
 import cartRepository from "../repository/cart.repository.js";
 
-class AppError extends Error {
-  constructor(message, statusCode = 500) {
-    super(message);
-    this.statusCode = statusCode;
-  }
+function createError(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
-const STATUSES = ["active", "abandoned", "converted"];
+// Cart quantities must be whole numbers from 1 to 10.
+function normalizeQuantity(value) {
+  const quantity = Number(value);
 
-// COMMON: Format cart data
-const formatCart = (cart) => {
-  const items = (cart.items || []).map((i) => ({
-    id: i.id,
-    productId: i.productId,
-    name: i.product?.name || null,
-    image: i.product?.image || null,
-    price: Number(i.price),
-    quantity: i.quantity,
-    total: Number((Number(i.price) * i.quantity).toFixed(2)),
-  }));
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+    throw createError("Quantity must be a whole number from 1 to 10", 400);
+  }
 
-  const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+  return quantity;
+}
 
-  return {
-    id: cart.id,
-    cartCode: cart.cartCode,
-    status: cart.status,
-    createdAt: cart.createdAt,
-    items,
-    itemCount: items.length,
-    subtotal: Number(subtotal.toFixed(2)),
-  };
-};
+// Find the user's active cart, or create one.
+async function getActiveCart(userId) {
+  let cart = await cartRepository.findActiveByUser(userId);
+
+  if (!cart) {
+    cart = await cartRepository.create({
+      userId: userId,
+      cartCode: `CART-${Date.now()}`,
+      status: "active",
+    });
+  }
+
+  return cart;
+}
+
+async function getCartItem(userId, itemId) {
+  if (!userId || !itemId) {
+    throw createError("Cart item id is required", 400);
+  }
+
+  const cart = await cartRepository.findActiveByUser(userId);
+  if (!cart) {
+    throw createError("Cart not found", 404);
+  }
+
+  const item = await cartRepository.findItemInCart(cart.id, itemId);
+  if (!item) {
+    throw createError("Cart item not found", 404);
+  }
+
+  return { cart, item };
+}
+
+// Get the user's active cart.
+async function getMyCart(userId) {
+  if (!userId) {
+    throw createError("User id is required", 400);
+  }
+
+  return cartRepository.findActiveByUser(userId);
+}
+
+// Add a product to the user's cart.
+async function addItem(userId, data = {}) {
+  const productId = data.productId || data.menuId;
+  let quantity = data.quantity;
+
+  if (quantity === undefined) {
+    quantity = 1;
+  }
+
+  if (!userId || !productId) {
+    throw createError("User id and product id are required", 400);
+  }
+
+  quantity = normalizeQuantity(quantity);
+
+  const product = await cartRepository.findProductById(productId);
+  if (!product) {
+    throw createError("Product not found", 404);
+  }
+
+  const stock = Number(product.stock);
+  if (Number.isFinite(stock) && quantity > stock) {
+    throw createError("Not enough stock", 400);
+  }
+
+  const cart = await getActiveCart(userId);
+  const existingItem = await cartRepository.findItem(cart.id, productId);
+
+  if (existingItem) {
+    const newQuantity = normalizeQuantity(
+      Number(existingItem.quantity) + quantity,
+    );
+
+    if (Number.isFinite(stock) && newQuantity > stock) {
+      throw createError("Not enough stock", 400);
+    }
+
+    await cartRepository.updateItem(existingItem, {
+      quantity: newQuantity,
+      price: Number(product.price),
+    });
+  } else {
+    await cartRepository.createItem({
+      cartId: cart.id,
+      productId: productId,
+      quantity: quantity,
+      price: Number(product.price),
+    });
+  }
+
+  return cartRepository.findByIdFull(cart.id);
+}
+
+// Change a cart item's quantity.
+async function updateQuantity(userId, data = {}) {
+  const itemId = data.itemId;
+  const quantity = normalizeQuantity(data.quantity);
+  const { cart, item } = await getCartItem(userId, itemId);
+
+  const product = await cartRepository.findProductById(item.productId);
+  if (!product) {
+    throw createError("Product not found", 404);
+  }
+
+  if (quantity > Number(product.stock)) {
+    throw createError("Not enough stock", 400);
+  }
+
+  await cartRepository.updateItem(item, {
+    quantity: quantity,
+    price: Number(product.price),
+  });
+
+  return cartRepository.findByIdFull(cart.id);
+}
+
+// Remove an item from the user's active cart.
+async function removeItem(userId, data = {}) {
+  const itemId = data.itemId;
+  const { cart } = await getCartItem(userId, itemId);
+
+  await cartRepository.deleteItem(itemId);
+  return cartRepository.findByIdFull(cart.id);
+}
+
+// Mark a non-empty cart as checked out.
+async function checkout(userId) {
+  const cart = await cartRepository.findActiveByUser(userId);
+
+  if (!cart || cart.items.length === 0) {
+    throw createError("Your cart is empty", 400);
+  }
+
+  await cartRepository.updateStatus(cart.id, "converted");
+  return cartRepository.findByIdFull(cart.id);
+}
+
+// Get the admin cart list.
+async function list(options = {}) {
+  return cartRepository.findAll(options);
+}
+
+// Get counts for each cart status.
+async function stats() {
+  const total = await cartRepository.count();
+  const active = await cartRepository.count({ status: "active" });
+  const abandoned = await cartRepository.count({ status: "abandoned" });
+  const converted = await cartRepository.count({ status: "converted" });
+
+  return { total: total, active: active, abandoned: abandoned, converted: converted };
+}
+
+// Find one cart for the admin page.
+async function getById(id) {
+  const cart = await cartRepository.findByIdFull(id);
+
+  if (!cart) {
+    throw createError("Cart not found", 404);
+  }
+
+  return cart;
+}
+
+// Change a cart's status.
+async function updateStatus(id, status) {
+  const validStatuses = ["active", "abandoned", "converted"];
+
+  if (!validStatuses.includes(status)) {
+    throw createError("Invalid cart status", 400);
+  }
+
+  await getById(id);
+  await cartRepository.updateStatus(id, status);
+  return getById(id);
+}
+
+// Delete one cart.
+async function remove(id) {
+  await getById(id);
+  await cartRepository.delete(id);
+  return { id: id };
+}
 
 const cartService = {
-  // ================= USER =================
-
-  // User: Get active cart or create a new cart
-  async getMyCart(userId) {
-    let cart = await cartRepository.findActiveByUser(userId);
-
-    if (!cart) {
-      await cartRepository.create({
-        cartCode: "CRT" + Date.now().toString().slice(-7),
-        userId,
-      });
-
-      cart = await cartRepository.findActiveByUser(userId);
-    }
-
-    return formatCart(cart);
-  },
-
-  // User: Add a product to the cart
-  async addItem(userId, { productId, quantity = 1 }) {
-    quantity = Number(quantity);
-
-    if (!productId) throw new AppError("Product id is required", 400);
-
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      throw new AppError("Quantity must be at least 1", 400);
-    }
-
-    const product = await cartRepository.findProductById(productId);
-
-    if (!product) throw new AppError("Product not found", 404);
-
-    const cart = await this.getMyCart(userId);
-    const existing = await cartRepository.findItem(cart.id, productId);
-
-    if (existing) {
-      await cartRepository.updateItem(existing, {
-        quantity: existing.quantity + quantity,
-      });
-    } else {
-      await cartRepository.createItem({
-        cartId: cart.id,
-        productId,
-        quantity,
-        price: product.price,
-      });
-    }
-
-    return this.getMyCart(userId);
-  },
-
-  // User: Update cart item quantity
-  async updateQuantity(userId, { itemId, quantity }) {
-    quantity = Number(quantity);
-
-    if (!itemId) throw new AppError("Item id is required", 400);
-
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      throw new AppError("Quantity must be at least 1", 400);
-    }
-
-    const cart = await this.getMyCart(userId);
-    const item = await cartRepository.findItemInCart(cart.id, itemId);
-
-    if (!item) throw new AppError("Cart item not found", 404);
-
-    await cartRepository.updateItem(item, { quantity });
-
-    return this.getMyCart(userId);
-  },
-
-  // User: Remove a product from the cart
-  async removeItem(userId, { itemId }) {
-    if (!itemId) throw new AppError("Item id is required", 400);
-
-    const cart = await this.getMyCart(userId);
-    const item = await cartRepository.findItemInCart(cart.id, itemId);
-
-    if (!item) throw new AppError("Cart item not found", 404);
-
-    await cartRepository.deleteItem(item.id);
-
-    return this.getMyCart(userId);
-  },
-
-  // User: Proceed to checkout and mark the cart as converted
-  async checkout(userId) {
-    const cart = await this.getMyCart(userId);
-
-    if (cart.itemCount === 0) {
-      throw new AppError("Cart is empty", 400);
-    }
-
-    await cartRepository.updateStatus(cart.id, "converted");
-
-    return cart;
-  },
-
-  // ================= ADMIN =================
-
-  // Admin: Get all carts with status filter and pagination
-  async list({ status, page, limit }) {
-    if (status && status !== "all" && !STATUSES.includes(status)) {
-      throw new AppError("Invalid status", 400);
-    }
-
-    const result = await cartRepository.findAll({
-      status,
-      page: Math.max(Number(page) || 1, 1),
-      limit: Math.min(Math.max(Number(limit) || 10, 1), 100),
-    });
-
-    return {
-      ...result,
-      carts: result.carts.map((c) => ({
-        ...formatCart(c),
-        userId: c.userId,
-        customer: c.user
-          ? `${c.user.firstName} ${c.user.lastName || ""}`.trim()
-          : null,
-      })),
-    };
-  },
-
-  // Admin: Get total, active, abandoned and converted cart counts
-  async stats() {
-    const [total, active, abandoned, converted] = await Promise.all([
-      cartRepository.count(),
-      cartRepository.count({ status: "active" }),
-      cartRepository.count({ status: "abandoned" }),
-      cartRepository.count({ status: "converted" }),
-    ]);
-
-    return { total, active, abandoned, converted };
-  },
-
-  // Admin: Get one cart with its products
-  async getById(id) {
-    const cart = await cartRepository.findByIdFull(id);
-
-    if (!cart) throw new AppError("Cart not found", 404);
-
-    return formatCart(cart);
-  },
-
-  // Admin: Update cart status
-  async updateStatus(id, status) {
-    if (!STATUSES.includes(status)) {
-      throw new AppError("Invalid status", 400);
-    }
-
-    const cart = await cartRepository.findByIdFull(id);
-
-    if (!cart) throw new AppError("Cart not found", 404);
-
-    await cartRepository.updateStatus(id, status);
-
-    return this.getById(id);
-  },
-
-  // Admin: Delete a cart
-  async remove(id) {
-    const deleted = await cartRepository.delete(id);
-
-    if (!deleted) throw new AppError("Cart not found", 404);
-  },
+  getMyCart: getMyCart,
+  addItem: addItem,
+  updateQuantity: updateQuantity,
+  removeItem: removeItem,
+  checkout: checkout,
+  list: list,
+  stats: stats,
+  getById: getById,
+  updateStatus: updateStatus,
+  remove: remove,
 };
 
 export default cartService;

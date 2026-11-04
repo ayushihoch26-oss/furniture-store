@@ -9,7 +9,6 @@ const MODULES = [
   "Dashboard",
   "Order Management",
   "Customers",
-  "Coupon Code",
   "Categories",
   "Transaction",
   "Brand",

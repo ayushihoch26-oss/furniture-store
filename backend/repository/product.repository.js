@@ -1,266 +1,163 @@
-import { Op, fn, col, where as sqlWhere } from "sequelize";
 import { Products } from "../models/index.js";
+import { Op, literal, where as sequelizeWhere } from "sequelize";
 
-export const LOW_STOCK_LIMIT = 8;
+// Create product with product code and SKU
+export const create = async (data) => {
+  return Products.sequelize.transaction(async (transaction) => {
 
-const OTHER = "Other";
+    // create product
+    const product = await Products.create(data, { transaction });
 
-// Stock filters
-const stockCondition = (status) => {
-  switch (status) {
-    case "out_of_stock":
-      return { [Op.lte]: 0 };
+    // generate product code and SKU
+    const productCode = `PROD-${product.id.toString().padStart(4, "0")}`;
+    const sku = `SKU-${product.id.toString().padStart(5, "0")}`;
 
-    case "low_stock":
-      return { [Op.gt]: 0, [Op.lte]: LOW_STOCK_LIMIT };
+    return product.update({ productCode, sku }, { transaction });
 
-    case "in_stock":
-      return { [Op.gt]: LOW_STOCK_LIMIT };
+  });
+}
 
-    default:
-      return null;
+// update product by id 
+export const update = async (id,updateData) => {
+  const product = await Products.findByPk(id);
+  if (!product) {
+    throw new Error("Product not found");
   }
-};
+  await product.update(updateData);
+  return product;
+}
 
-// Sorting options
-const SORTS = {
-  latest: [
-    ["createdAt", "DESC"],
-    ["id", "DESC"],
-  ],
-  oldest: [
-    ["createdAt", "ASC"],
-    ["id", "ASC"],
-  ],
-  price_asc: [
-    ["price", "ASC"],
-    ["id", "ASC"],
-  ],
-  price_desc: [
-    ["price", "DESC"],
-    ["id", "ASC"],
-  ],
-  name_asc: [
-    ["name", "ASC"],
-    ["id", "ASC"],
-  ],
-  stock_asc: [
-    ["stock", "ASC"],
-    ["id", "ASC"],
-  ],
-  stock_desc: [
-    ["stock", "DESC"],
-    ["id", "ASC"],
-  ],
-};
-
-const SORT_ALIASES = {
-  low: "price_asc",
-  high: "price_desc",
-  name: "name_asc",
-  newest: "latest",
-};
-
-const resolveSort = (sort) => {
-  const key = SORT_ALIASES[sort] || sort;
-  return SORTS[key] ? key : "latest";
-};
-
-// Search and filter products
-const buildWhere = ({
-  search,
-  categories,
-  minPrice,
-  maxPrice,
-  onSale,
-  stockStatus,
-}) => {
-  const where = {};
-  const conditions = [];
-
-  const keyword = String(search || "").trim();
-
-  if (keyword) {
-    const like = { [Op.like]: `%${keyword}%` };
-
-    where[Op.or] = [
-      { name: like },
-      { productCode: like },
-      { description: like },
-    ];
+// delete product by id
+export const destroy = async (id) => {
+  const product = await Products.findByPk(id);
+  if (!product) {
+    throw new Error("Product not found");
   }
+  await product.destroy();
+  return product;
+}
 
-  if (categories?.length) {
-    const selectedCategories = categories.filter(
-      (category) => category !== OTHER,
-    );
+// get product by id
+export const findById = async (id) => {
+  return Products.findByPk(id);
+}
 
-    const categoryConditions = [];
+// get stats for products
+export const getStats = async () => {
+  const [total, inStock, lowStock, outOfStock] =
+    await Promise.all([
+      Products.count(),
 
-    if (selectedCategories.length) {
-      categoryConditions.push({
-        category: { [Op.in]: selectedCategories },
-      });
-    }
+      Products.count({
+        where: { stock: { [Op.gt]: 8 } },
+      }),
 
-    if (categories.includes(OTHER)) {
-      categoryConditions.push({ category: null }, { category: "" });
-    }
-
-    conditions.push({ [Op.or]: categoryConditions });
-  }
-
-  if (minPrice != null) {
-    where.price = {
-      ...(where.price || {}),
-      [Op.gte]: minPrice,
-    };
-  }
-
-  if (maxPrice != null) {
-    where.price = {
-      ...(where.price || {}),
-      [Op.lte]: maxPrice,
-    };
-  }
-
-  if (onSale) {
-    conditions.push(sqlWhere(col("salePrice"), Op.lt, col("price")));
-  }
-
-  const stock = stockCondition(stockStatus);
-
-  if (stock) {
-    where.stock = stock;
-  }
-
-  if (conditions.length) {
-    where[Op.and] = conditions;
-  }
-
-  return where;
-};
-
-const productRepository = {
-  // Create product with product code and SKU
-  async createWithCodes(data) {
-    return Products.sequelize.transaction(async (transaction) => {
-      const product = await Products.create(data, { transaction });
-
-      await product.update(
-        {
-          productCode: `PRD${String(product.id).padStart(4, "0")}`,
-          sku: `SKU-${String(product.id).padStart(5, "0")}`,
+      Products.count({
+        where: {
+          stock: {
+            [Op.gt]: 0,
+            [Op.lte]: 8,
+          },
         },
-        { transaction },
-      );
+      }),
 
-      return product;
-    });
-  },
-
-  // Find product by ID
-  findById(id) {
-    return Products.findByPk(id);
-  },
-
-  // Update product
-  update(product, data) {
-    return product.update(data);
-  },
-
-  // Delete product
-  delete(id) {
-    return Products.destroy({ where: { id } });
-  },
-
-  // Search, filter, sort and paginate products
-  async findAll({ sort = "latest", page = 1, limit = 8, ...filters } = {}) {
-    limit = Math.min(Math.max(Number(limit) || 8, 1), 100);
-
-    const sortKey = resolveSort(sort);
-    const where = buildWhere(filters);
-
-    const total = await Products.count({ where });
-
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
-    const requestedPage = Math.max(Number(page) || 1, 1);
-    const currentPage = Math.min(requestedPage, totalPages);
-
-    const products = await Products.findAll({
-      where,
-      order: SORTS[sortKey],
-      limit,
-      offset: (currentPage - 1) * limit,
-    });
-
-    console.log(
-      `[products] page ${currentPage}/${totalPages} | ` +
-        `${products.length} rows | total ${total} | ` +
-        `limit ${limit} | sort ${sortKey}`,
-      requestedPage !== currentPage ? `(page ${requestedPage} clamped)` : "",
-    );
-
-    return {
-      products,
-      total,
-      page: currentPage,
-      limit,
-      totalPages,
-    };
-  },
-
-  // Count products
-  count(where = {}) {
-    return Products.count({ where });
-  },
-
-  // Count products by stock status
-  countByStock(status) {
-    const stock = stockCondition(status);
-
-    return Products.count({
-      where: stock ? { stock } : {},
-    });
-  },
-
-  // Get product count for each category
-  async categoryCounts() {
-    const rows = await Products.findAll({
-      attributes: ["category", [fn("COUNT", col("id")), "count"]],
-      group: ["category"],
-      raw: true,
-    });
-
-    const counts = new Map();
-
-    rows.forEach((row) => {
-      const category = row.category || OTHER;
-
-      counts.set(category, (counts.get(category) || 0) + Number(row.count));
-    });
-
-    return [...counts.entries()].map(([category, count]) => ({
-      category,
-      count,
-    }));
-  },
-
-  // Get minimum and maximum product prices
-  async priceRange() {
-    const row = await Products.findOne({
-      attributes: [
-        [fn("MIN", col("price")), "min"],
-        [fn("MAX", col("price")), "max"],
-      ],
-      raw: true,
-    });
-
-    return {
-      min: row?.min != null ? Number(row.min) : null,
-      max: row?.max != null ? Number(row.max) : null,
-    };
-  },
+      Products.count({
+        where: { stock: { [Op.lte]: 0 } },
+      }),
+    ]);
+  return { total, inStock, lowStock, outOfStock };
 };
 
-export default productRepository;
+// get all product 
+export const findAll = async () => {
+  return Products.findAll();
+};
+
+// get product with pagination
+export const findPaginated = async(limit=8,page=1) =>{
+  page = Math.max(Number(page) || 1, 1);
+  limit = Math.min(Math.max(Number(limit) || 8, 1), 100);
+
+  const offset = (page - 1) * limit;
+  const {count, rows} = await Products.findAndCountAll({
+    limit,
+    offset,
+    order: [["id", "DESC"]],
+  });
+
+  return {
+    products: rows,
+    total: count, 
+    page,
+    limit,
+    totalPages: Math.max(Math.ceil(count / limit), 1),
+  };
+}
+
+// get by search 
+export const search = async (keyword) => {
+  const value = String(keyword || "").trim();
+
+  if (!value) return [];
+
+  return Products.findAll({
+    where: {
+      [Op.or]: [
+        { name: { [Op.like]: `%${value}%` } },
+        { productCode: { [Op.like]: `%${value}%` } },
+        { sku: { [Op.like]: `%${value}%` } },
+        { category: { [Op.like]: `%${value}%` } },
+      ],
+    },
+  });
+};
+
+// get product apply filter 
+export const filter = async (filters = {}) => {
+  const where = {};
+
+  if (filters.category?.length) {
+    where.category = {
+      [Op.in]: filters.category,
+    };
+  }
+
+  if (filters.fromDate || filters.toDate) {
+    where.createdAt = {};
+
+    if (filters.fromDate) {
+      where.createdAt[Op.gte] = new Date(filters.fromDate);
+    }
+
+    if (filters.toDate) {
+      const endDate = new Date(filters.toDate);
+      endDate.setDate(endDate.getDate() + 1);
+
+      where.createdAt[Op.lt] = endDate;
+    }
+  }
+
+  return Products.findAll({ where });
+};
+
+// price sorting
+
+export const sortByPrice = async(order="asc") => {
+  const direction = order.toLowerCase() === "asc" ? "ASC" : "DESC";
+  return Products.findAll({
+    order: [["price", direction]],
+  });
+}
+
+export default {
+  create,
+  update,
+  destroy,
+  findById,
+  findAll,
+  findPaginated,
+  search,
+  filter,
+  sortByPrice,
+  getStats,
+};

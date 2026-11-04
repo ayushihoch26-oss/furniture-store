@@ -1,339 +1,522 @@
+
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import userRepository from "../repository/user.repository.js";
+
+import {
+  findById,
+  findByIdWithPassword,
+  findByEmail,
+  findByEmailWithPassword,
+  findByValidResetToken,
+  create,
+  update,
+  findAllPaginated,
+  getUserStats,
+  getOrderCountsByUserIds,
+  deleteById,
+  getCustomerOverview
+} from "../repository/user.repository.js";
+
+import {
+  validateRegister,
+  validateLogin,
+  validateChangePassword,
+  validateForgotPassword,
+  validateResetPassword,
+  validateUpdateProfile,
+  validateUserId,
+  validateUserParams
+} from "../validator/user.validator.js";
+
 import { sendMail } from "../utils/mailer.js";
 
-// Throw an error with an HTTP status
-const fail = (message, status = 400) => {
-  const err = new Error(message);
-  err.status = status;
-  throw err;
-};
+// ================= COMMON HELPERS =================
 
-const signToken = (user) =>
-  jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
+// Create error
+function fail(message, status = 400) {
+  const error = new Error(message);
+  error.statusCode = status;
+  throw error;
+}
 
-const sanitize = (user) => {
-  const obj =
-    typeof user.get === "function" ? user.get({ plain: true }) : { ...user };
-  delete obj.password;
-  return obj;
-};
+// Remove extra spaces
+function text(value) {
+  return String(value ?? "").trim();
+}
 
-const text = (value) => String(value ?? "").trim();
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Generate JWT token
+function signToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      role: user.role
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d"
+    }
+  );
+}
 
-// ---- Forgot password helpers ----
+// Remove password
+function sanitize(user) {
+  const userData = user.get
+    ? user.get({ plain: true })
+    : { ...user };
+
+  delete userData.password;
+
+  return userData;
+}
+
+// ================= FORGOT PASSWORD HELPERS =================
+
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 const RESET_MINUTES = 60;
 
-// Only the hash of the emailed token is stored in the database
-const hashToken = (token) =>
-  crypto.createHash("sha256").update(String(token)).digest("hex");
+// Create token hash
+function hashToken(token) {
+  return crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+}
 
-const resetEmail = (name, link) => ({
-  subject: "Set your new password",
-  text: `Hi ${name},\n\nOpen this link to choose a new password (valid for ${RESET_MINUTES} minutes):\n${link}\n\nIf you did not ask for this, you can ignore this email.`,
-  html: `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#111">
-      <h2 style="margin:0 0 16px">Set a new password</h2>
-      <p>Hi ${name},</p>
-      <p>We received a request to reset your password. Click
-         <b>Set new password</b> below to open the page where you enter your
-         new password and confirm it. This link is valid for
-         ${RESET_MINUTES} minutes.</p>
-      <p style="margin:28px 0">
+// Create reset email
+function resetEmail(name, link) {
+  return {
+    subject: "Reset your password",
+
+    text: `Hi ${name},
+
+Open this link to reset your password:
+${link}
+
+This link is valid for ${RESET_MINUTES} minutes.
+
+If you did not request this, ignore this email.`,
+
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
+        <h2>Reset your password</h2>
+        <p>Hi ${name},</p>
+        <p>Click below to reset your password.</p>
+
         <a href="${link}"
-           style="background:#947458;color:#fff;padding:12px 28px;text-decoration:none">
-          Set new password
+          style="background:#947458;color:white;padding:12px 28px;text-decoration:none">
+          Reset Password
         </a>
-      </p>
-      <p style="font-size:13px;color:#666">
-        Or copy this link into your browser:<br>${link}
-      </p>
-      <p style="font-size:13px;color:#666">
-        If you did not ask for this, you can safely ignore this email.
-      </p>
-    </div>`,
-});
 
-const userService = {
-  // Register
-  async register({
-    firstName,
-    lastName,
-    email,
-    password,
-    phone,
-    street,
-    apartment,
-    city,
-    state,
-    zip,
-    country,
-  } = {}) {
-    if (!firstName || !lastName || !email || !password) {
-      fail("All required fields must be provided");
-    }
+        <p>This link is valid for ${RESET_MINUTES} minutes.</p>
+        <p>If you did not request this, ignore this email.</p>
+      </div>
+    `
+  };
+}
 
-    email = text(email).toLowerCase();
+// ================= REGISTER =================
 
-    if (!EMAIL_REGEX.test(email)) fail("Invalid email address");
-    if (String(password).length < 8)
-      fail("Password must be at least 8 characters");
+export async function register(data = {}) {
+  data = validateRegister(data);
 
-    const existing = await userRepository.findByEmail(email);
-    if (existing) fail("Email already registered", 409);
+  const firstName = data.firstName;
+  const lastName = data.lastName;
+  const email = data.email;
+  const password = data.password;
 
-    const hashed = await bcrypt.hash(password, 10);
+  const userEmail = text(email).toLowerCase();
 
-    const user = await userRepository.create({
-      firstName: text(firstName),
-      lastName: text(lastName),
-      email,
-      phone: text(phone) || null,
-      street: text(street) || null,
-      apartment: text(apartment) || null,
-      city: text(city) || null,
-      state: text(state) || null,
-      zip: text(zip) || null,
-      country: text(country) || "United States",
-      password: hashed,
-    });
+  // Check existing email
+  const existingUser = await findByEmail(userEmail);
 
-    return { success: true, token: signToken(user), user: sanitize(user) };
-  },
+  if (existingUser) {
+    fail("Email already registered", 409);
+  }
 
-  // Login
-  async login({ email, password } = {}) {
-    if (!email || !password) fail("Email and password are required");
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    email = text(email).toLowerCase();
+  // Create user
+  const user = await create({
+    firstName: text(firstName),
+    lastName: text(lastName),
+    email: userEmail,
+    password: hashedPassword,
+    phone: text(data.phone) || null,
+    street: text(data.street) || null,
+    apartment: text(data.apartment) || null,
+    city: text(data.city) || null,
+    state: text(data.state) || null,
+    zip: text(data.zip) || null,
+    country: text(data.country) || "United States"
+  });
 
-    const user = await userRepository.findByEmailWithPassword(email);
-    if (!user || !user.password) fail("Invalid email or password", 401);
+  return {
+    success: true,
+    token: signToken(user),
+    user: sanitize(user)
+  };
+}
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) fail("Invalid email or password", 401);
+// ================= LOGIN =================
 
-    return { success: true, token: signToken(user), user: sanitize(user) };
-  },
+export async function login(data = {}) {
+  data = validateLogin(data);
 
-  // Change password
-  async changePassword(id, { currentPassword, newPassword } = {}) {
-    if (!currentPassword || !newPassword) {
-      fail("Current and new password are required");
-    }
-    if (newPassword.length < 8) {
-      fail("Password must be at least 8 characters");
-    }
+  const email = data.email;
+  const password = data.password;
 
-    const user = await userRepository.findByIdWithPassword(id);
-    if (!user) fail("User not found", 404);
+  // Find user
+  const user = await findByEmailWithPassword(email);
 
-    const match = await bcrypt.compare(currentPassword, user.password);
-    if (!match) fail("Current password is incorrect");
+  if (!user || !user.password) {
+    fail("Invalid email or password", 401);
+  }
 
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await userRepository.update(id, { password: hashed });
-  },
+  // Check password
+  const isMatch = await bcrypt.compare(password, user.password);
 
-  // Forgot password: email a reset link
-  async forgotPassword({ email } = {}) {
-    email = text(email).toLowerCase();
+  if (!isMatch) {
+    fail("Invalid email or password", 401);
+  }
 
-    if (!EMAIL_REGEX.test(email)) fail("Enter a valid email address");
+  return {
+    success: true,
+    token: signToken(user),
+    user: sanitize(user)
+  };
+}
 
-    const user = await userRepository.findByEmail(email);
+// ================= CHANGE PASSWORD =================
 
-    // Same answer whether or not the email exists, so accounts cannot be guessed
-    const response = {
-      success: true,
-      message:
-        "If an account exists for this email, a password reset link has been sent.",
-    };
+export async function changePassword(id, data = {}) {
+  id = validateUserId(id);
+  data = validateChangePassword(data);
 
-    if (!user) return response;
+  const currentPassword = data.currentPassword;
+  const newPassword = data.newPassword;
 
-    const token = crypto.randomBytes(32).toString("hex");
+  // Find user
+  const user = await findByIdWithPassword(id);
 
-    await userRepository.update(user.id, {
-      resetPasswordToken: hashToken(token),
-      resetPasswordExpires: new Date(Date.now() + RESET_MINUTES * 60 * 1000),
-    });
+  if (!user) {
+    fail("User not found", 404);
+  }
 
-    const link = `${CLIENT_URL}/reset-password/${token}`;
-    const mail = resetEmail(user.firstName || "there", link);
+  // Check current password
+  const isMatch = await bcrypt.compare(
+    currentPassword,
+    user.password
+  );
 
-    try {
-      await sendMail({ to: user.email, ...mail });
-    } catch (error) {
-      console.error("Reset email failed:", error.message);
-      fail(
-        "We could not send the email right now. Please try again later.",
-        500,
-      );
-    }
+  if (!isMatch) {
+    fail("Current password is incorrect");
+  }
 
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await update(id, {
+    password: hashedPassword
+  });
+
+  return {
+    success: true,
+    message: "Password changed successfully"
+  };
+}
+
+// ================= FORGOT PASSWORD =================
+
+export async function forgotPassword(data = {}) {
+  data = validateForgotPassword(data);
+
+  const email = data.email;
+
+  // Find user
+  const user = await findByEmail(email);
+
+  const response = {
+    success: true,
+    message: "If an account exists for this email, a password reset link has been sent."
+  };
+
+  if (!user) {
     return response;
-  },
+  }
 
-  // Reset password: the page opened from the email link
-  async resetPassword({ token, password, confirmPassword } = {}) {
-    if (!token) fail("Reset link is invalid or has expired");
+  // Generate token
+  const token = crypto.randomBytes(32).toString("hex");
 
-    if (!password || String(password).length < 8) {
-      fail("Password must be at least 8 characters");
-    }
+  // Save token
+  await update(user.id, {
+    resetPasswordToken: hashToken(token),
+    resetPasswordExpires: new Date(
+      Date.now() + RESET_MINUTES * 60 * 1000
+    )
+  });
 
-    if (password !== confirmPassword) fail("Passwords do not match");
+  // Create reset link
+  const link = `${CLIENT_URL}/reset-password/${token}`;
 
-    const user = await userRepository.findByValidResetToken(hashToken(token));
-    if (!user) fail("Reset link is invalid or has expired");
+  // Create email
+  const mail = resetEmail(user.firstName || "there", link);
 
-    const hashed = await bcrypt.hash(String(password), 10);
-
-    // Save the new password and make the link single-use
-    await userRepository.update(user.id, {
-      password: hashed,
-      resetPasswordToken: null,
-      resetPasswordExpires: null,
+  try {
+    await sendMail({
+      to: user.email,
+      ...mail
     });
+  } catch (error) {
+    console.error("Reset email failed:", error.message);
 
-    return {
-      success: true,
-      message: "Password updated successfully. You can now log in.",
-    };
-  },
-
-  // Get one user
-  async getById(id) {
-    const user = await userRepository.findById(id);
-    if (!user) fail("User not found", 404);
-    return sanitize(user);
-  },
-
-  // Update profile (account details + address)
-  async updateProfile(id, body = {}) {
-    const user = await userRepository.findById(id);
-    if (!user) fail("User not found", 404);
-
-    const data = {};
-
-    if (body.firstName !== undefined) {
-      if (!text(body.firstName)) fail("First name is required");
-      data.firstName = text(body.firstName);
-    }
-
-    if (body.lastName !== undefined) {
-      data.lastName = text(body.lastName);
-    }
-
-    if (body.email !== undefined) {
-      const email = text(body.email).toLowerCase();
-      if (!EMAIL_REGEX.test(email)) fail("Invalid email address");
-
-      if (email !== user.email) {
-        const taken = await userRepository.findByEmail(email);
-        if (taken && taken.id !== user.id)
-          fail("Email already registered", 409);
-      }
-      data.email = email;
-    }
-
-    // Optional fields: empty text is saved as NULL
-    ["phone", "street", "apartment", "city", "state", "zip"].forEach(
-      (field) => {
-        if (body[field] !== undefined) data[field] = text(body[field]) || null;
-      },
+    fail(
+      "We could not send the email right now. Please try again later.",
+      500
     );
+  }
 
-    if (body.country !== undefined) {
-      data.country = text(body.country) || "United States";
-    }
+  return response;
+}
 
-    if (body.gender !== undefined) {
-      const gender = text(body.gender) || null;
-      if (gender && !["male", "female", "other"].includes(gender)) {
-        fail("Invalid gender");
+// ================= RESET PASSWORD =================
+
+export async function resetPassword(data = {}) {
+  data = validateResetPassword(data);
+
+  const token = data.token;
+  const password = data.password;
+
+  // Find user
+  const user = await findByValidResetToken(hashToken(token));
+
+  if (!user) {
+    fail("Reset link is invalid or has expired");
+  }
+
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Update password
+  await update(user.id, {
+    password: hashedPassword,
+    resetPasswordToken: null,
+    resetPasswordExpires: null
+  });
+
+  return {
+    success: true,
+    message: "Password updated successfully. You can now log in."
+  };
+}
+
+// ================= GET USER BY ID =================
+
+export async function getById(id) {
+  id = validateUserId(id);
+
+  const user = await findById(id);
+
+  if (!user) {
+    fail("User not found", 404);
+  }
+
+  return sanitize(user);
+}
+
+// ================= UPDATE PROFILE =================
+
+export async function updateProfile(id, body = {}) {
+  id = validateUserId(id);
+
+  body = validateUpdateProfile(body);
+
+  // Find user
+  const user = await findById(id);
+
+  if (!user) {
+    fail("User not found", 404);
+  }
+
+  const data = {};
+
+  // Update first name
+  if (body.firstName !== undefined) {
+    data.firstName = body.firstName;
+  }
+
+  // Update last name
+  if (body.lastName !== undefined) {
+    data.lastName = body.lastName;
+  }
+
+  // Update email
+  if (body.email !== undefined) {
+    const email = body.email;
+
+    if (email !== user.email) {
+      const existingUser = await findByEmail(email);
+
+      if (existingUser && existingUser.id !== user.id) {
+        fail("Email already registered", 409);
       }
-      data.gender = gender;
     }
 
-    // The frontend calls it "birthday", the database calls it "birthdate"
-    const birthdate =
-      body.birthdate !== undefined ? body.birthdate : body.birthday;
-    if (birthdate !== undefined) {
-      data.birthdate = text(birthdate) || null;
+    data.email = email;
+  }
+
+  // Update phone
+  if (body.phone !== undefined) {
+    data.phone = text(body.phone) || null;
+  }
+
+  // Update address
+  if (body.street !== undefined) {
+    data.street = text(body.street) || null;
+  }
+
+  if (body.apartment !== undefined) {
+    data.apartment = text(body.apartment) || null;
+  }
+
+  if (body.city !== undefined) {
+    data.city = text(body.city) || null;
+  }
+
+  if (body.state !== undefined) {
+    data.state = text(body.state) || null;
+  }
+
+  if (body.zip !== undefined) {
+    data.zip = text(body.zip) || null;
+  }
+
+  // Update country
+  if (body.country !== undefined) {
+    data.country = text(body.country) || "United States";
+  }
+
+  // Update gender
+  if (body.gender !== undefined) {
+    data.gender = text(body.gender) || null;
+  }
+
+  // Update birthday
+  if (body.birthdate !== undefined) {
+    data.birthdate = text(body.birthdate) || null;
+  }
+
+  if (body.birthday !== undefined) {
+    data.birthdate = text(body.birthday) || null;
+  }
+
+  // Save profile
+  const updatedUser = await update(id, data);
+
+  return sanitize(updatedUser);
+}
+
+// ================= ADMIN USER LIST =================
+
+export async function list(params = {}) {
+  const {
+    page,
+    limit,
+    search,
+    startDate,
+    endDate,
+    role
+  } = validateUserParams(params);
+
+  // Get users
+  const result = await findAllPaginated({
+    page,
+    limit,
+    search,
+    startDate,
+    endDate,
+    role
+  });
+
+  // Get statistics
+  const stats = await getUserStats();
+
+  // Get user details
+  const users = [];
+  const userIds = [];
+
+  for (let i = 0; i < result.users.length; i++) {
+    const user = sanitize(result.users[i]);
+
+    users.push(user);
+    userIds.push(user.id);
+  }
+
+  // Get order counts
+  const orderCounts = await getOrderCountsByUserIds(userIds);
+
+  // Add order details
+  const updatedUsers = [];
+
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+
+    let counts = orderCounts[user.id];
+
+    if (!counts) {
+      counts = {};
     }
 
-    const updated = await userRepository.update(id, data);
-    return sanitize(updated);
-  },
-
-  // Admin: users list with pagination, search, dates
-  // Admin: users list with pagination, search, dates, and order counts
-  // Admin: users list with pagination, search, dates, and order counts
-  async list({
-    page = 1,
-    limit = 7,
-    search = "",
-    startDate = "",
-    endDate = "",
-    role = "",
-  } = {}) {
-    page = Math.max(Number(page) || 1, 1);
-    limit = Math.min(Math.max(Number(limit) || 7, 1), 100);
-
-    const [result, stats] = await Promise.all([
-      userRepository.findAllPaginated({
-        page,
-        limit,
-        search: text(search),
-        startDate,
-        endDate,
-        role: text(role),
-      }),
-      userRepository.getUserStats(),
-    ]);
-
-    const users = result.users.map(sanitize);
-    const userIds = users.map((user) => user.id);
-
-    // Get order counts from the repository
-    const orderCounts = await userRepository.getOrderCountsByUserIds(userIds);
-
-    const updatedUsers = users.map((user) => {
-      const counts = orderCounts?.[user.id] || {};
-
-      return {
-        ...user,
-        totalOrders: Number(counts.totalOrders) || 0,
-        completedOrders: Number(counts.completedOrders) || 0,
-        canceledOrders: Number(counts.canceledOrders) || 0,
-        lastPurchaseAt: counts.lastPurchaseAt || null,
-        totalSpend: Number(counts.totalSpend) || 0,
-      };
+    updatedUsers.push({
+      ...user,
+      totalOrders: Number(counts.totalOrders) || 0,
+      completedOrders: Number(counts.completedOrders) || 0,
+      canceledOrders: Number(counts.canceledOrders) || 0,
+      lastPurchaseAt: counts.lastPurchaseAt || null,
+      totalSpend: Number(counts.totalSpend) || 0
     });
+  }
 
-    return {
-      ...result,
-      users: updatedUsers,
-      stats,
-    };
-  },
-  // Admin: delete user
-  async remove(id) {
-    const deleted = await userRepository.deleteById(id);
-    if (!deleted) fail("User not found", 404);
-  },
-  // Admin: customer sign-ups per day (last 14 days)
-  async overview() {
-    return userRepository.getCustomerOverview();
-  },
+  return {
+    ...result,
+    users: updatedUsers,
+    stats
+  };
+}
+
+// ================= DELETE USER =================
+
+export async function remove(id) {
+  id = validateUserId(id);
+
+  const deletedUser = await deleteById(id);
+
+  if (!deletedUser) {
+    fail("User not found", 404);
+  }
+
+  return {
+    success: true,
+    message: "User deleted successfully"
+  };
+}
+
+// ================= CUSTOMER OVERVIEW =================
+
+export async function overview() {
+  return await getCustomerOverview();
+}
+
+export default {
+  register,
+  login,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  getById,
+  updateProfile,
+  list,
+  remove,
+  overview
 };
-
-export default userService;

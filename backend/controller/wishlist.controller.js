@@ -66,7 +66,7 @@ export const count = async (req, res, next) => {
 // Get All Wishlist Items (the admin routes are POST, so read the body too)
 export const list = async (req, res, next) => {
   try {
-    res.json(await wishlistService.list({ ...req.query, ...req.body }));
+    res.json(await wishlistService.getAllWishlists({ ...req.query, ...req.body }));
   } catch (err) {
     next(err);
   }
@@ -92,6 +92,8 @@ export const getByUser = async (req, res, next) => {
 
 // Delete One Wishlist Item
 export const removeById = async (req, res, next) => {
+
+  
   try {
     await wishlistService.removeById(req.params.id);
     res.json({ success: true, message: "Wishlist item deleted successfully" });

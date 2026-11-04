@@ -363,15 +363,16 @@ function useShopFilters() {
 
     async function loadFilters() {
       try {
-        const [filters, sale] = await Promise.all([
+        const [filters, sale, categoryList] = await Promise.all([
           shopService.getFilters(),
           shopService.getProducts({ onSale: true, limit: 1 }),
+          shopService.getCategories(),
         ]);
 
         if (cancelled) return;
 
         setCategories(
-          (filters?.categories || []).map((category) => ({
+          categoryList.map((category) => ({
             name: category.name,
             count: Number(category.count) || 0,
           })),

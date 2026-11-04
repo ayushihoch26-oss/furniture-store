@@ -5,7 +5,6 @@ const modules = [
   "Dashboard",
   "Order Management",
   "Customers",
-  "Coupon Code",
   "Categories",
   "Transaction",
   "Brand",

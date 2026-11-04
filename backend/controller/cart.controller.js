@@ -61,7 +61,8 @@ export const checkout = async (req, res, next) => {
 // Get All Carts (Admin)
 export const list = async (req, res, next) => {
   try {
-    const carts = await cartService.list(req.query);
+    const options = { ...req.query, ...(req.body || {}) };
+    const carts = await cartService.list(options);
     res.json(carts);
   } catch (err) {
     next(err);

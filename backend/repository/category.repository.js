@@ -118,6 +118,7 @@ const categoryRepository = {
     );
 
     return categories.map((category) => ({
+      id: category.id,
       category: category.name,
       count: counts[category.name] || 0,
     }));

@@ -77,21 +77,9 @@ export const updateStatus = async (id, status) => {
   return format(message);
 };
 
-export const stats = async () => {
-  const [total, newCount, readCount, repliedCount] = await Promise.all([
-    contactUsRepository.findAndCountAll(),
-    contactUsRepository.findAndCountAll("New"),
-    contactUsRepository.findAndCountAll("Read"),
-    contactUsRepository.findAndCountAll("Replied"),
-  ]);
-
-  return {
-    total,
-    new: newCount,
-    read: readCount,
-    replied: repliedCount,
-  };
-};
+export const stats = async()=>{
+    return contactUsRepository.getStats();
+}
 
 export default {
   create,

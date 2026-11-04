@@ -73,7 +73,7 @@ CartItems.belongsTo(Products, {
 });
 
 Users.hasMany(Wishlists, { foreignKey: "userId", onDelete: "CASCADE" });
-Wishlists.belongsTo(Users, { foreignKey: "userId" });
+Wishlists.belongsTo(Users, { foreignKey: "userId", as: "user" });
 
 Products.hasMany(Wishlists, { foreignKey: "productId", onDelete: "CASCADE" });
 Wishlists.belongsTo(Products, { foreignKey: "productId", as: "product" });
