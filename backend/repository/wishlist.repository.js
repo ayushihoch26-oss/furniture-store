@@ -1,4 +1,4 @@
-import {Op } from "sequelize";
+import { Op } from "sequelize";
 import { Wishlists, Products, Users } from "../models/index.js";
 
 // Find wishlist by ID
@@ -27,10 +27,30 @@ export async function findByUserId(userId) {
       {
         model: Products,
         as: "product",
-        attributes: ["id", "name", "price", "image"]
+        attributes: ["id", "name", "price", "salePrice", "image"]
       }
     ]
   });
+}
+
+export async function findByUserAndProduct(userId, productId) {
+  return await Wishlists.findOne({ where: { userId, productId } });
+}
+
+export async function findProductById(productId) {
+  return await Products.findByPk(productId);
+}
+
+export async function deleteByUserAndProduct(userId, productId) {
+  return await Wishlists.destroy({ where: { userId, productId } });
+}
+
+export async function clearByUser(userId) {
+  return await Wishlists.destroy({ where: { userId } });
+}
+
+export async function countByUser(userId) {
+  return await Wishlists.count({ where: { userId } });
 }
 
 // show all wishlist in admin side
@@ -103,23 +123,32 @@ export const searchWishlistByProductName = async (productName) => {
 
 // pagination in admin side for wishlist
 // pagination in admin side for wishlist
-export const findAllPaginated = async (limit = 8, page = 1) => {
+export const findAllPaginated = async (limit = 8, page = 1, filters = {}) => {
   page = Math.max(Number(page) || 1, 1);
   limit = Math.min(Math.max(Number(limit) || 8, 1), 100);
 
   const offset = (page - 1) * limit;
+  const where = {};
+
+  if (filters.userId !== undefined) {
+    where.userId = filters.userId;
+  }
+  if (filters.productId !== undefined) {
+    where.productId = filters.productId;
+  }
 
   const { count, rows } = await Wishlists.findAndCountAll({
+    where,
     include: [
       {
         model: Products,
         as: "product",
-        attributes: ["id", "name", "price", "image"] // Make sure attributes are explicit
+        attributes: ["id", "name", "price", "image", "category"]
       },
       {
         model: Users,
         as: "user",
-        attributes: ["id", "firstName", "lastName", "email"] // Explicit attributes
+        attributes: ["id", "firstName", "lastName", "email"]
       }
     ],
     limit,
@@ -133,7 +162,7 @@ export const findAllPaginated = async (limit = 8, page = 1) => {
     total: count,
     page,
     limit,
-    totalPages: Math.ceil(count / limit)
+    totalPages: Math.max(Math.ceil(count / limit), 1)
   };
 };
 
@@ -170,7 +199,13 @@ export const sortByPrice = async (order = "asc") => {
 export default {
   findById,
   findByUserId,
+  findByUserAndProduct,
+  findProductById,
+  deleteByUserAndProduct,
+  clearByUser,
+  countByUser,
   getAllWishlists,
+  getWishlistStats,
   createWishlist,
   deleteWishlist,
   searchWishlistByProductName,

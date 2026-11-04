@@ -25,42 +25,135 @@ export const getWishlistByUserId = async (userId) => {
   return await wishlistRepository.findByUserId(userId);
 };
 
-// Get all wishlists (Admin) in the flat shape expected by the admin table.
-export const getAllWishlists = async () => {
-  const wishlists = await wishlistRepository.getAllWishlists();
+function formatWishlistItem(item) {
+  const product = item.product;
 
-  return wishlists.map((wishlist) => ({
-    id: wishlist.id,
-    userId: wishlist.userId,
-    customer: wishlist.user
-      ? `${wishlist.user.firstName} ${wishlist.user.lastName || ""}`.trim()
+  return {
+    id: product?.id ?? item.productId,
+    wishlistId: item.id,
+    productId: item.productId,
+    name: product?.name ?? null,
+    price: product ? Number(product.price) : null,
+    image: product?.image ?? null,
+    salePrice: product?.salePrice == null ? null : Number(product.salePrice),
+    addedAt: item.createdAt,
+  };
+}
+
+function formatAdminWishlist(item) {
+  return {
+    id: item.id,
+    userId: item.userId,
+    customer: item.user
+      ? `${item.user.firstName} ${item.user.lastName || ""}`.trim()
       : null,
-    email: wishlist.user?.email || null,
-    productId: wishlist.productId,
-    productName: wishlist.product?.name || null,
-    category: wishlist.product?.category || null,
-    price: wishlist.product ? Number(wishlist.product.price) : null,
-    image: wishlist.product?.image || null,
-    addedAt: wishlist.createdAt,
-  }));
+    email: item.user?.email || null,
+    productId: item.productId,
+    productName: item.product?.name || null,
+    category: item.product?.category || null,
+    price: item.product ? Number(item.product.price) : null,
+    image: item.product?.image || null,
+    addedAt: item.createdAt,
+  };
+}
+
+export const getMyWishlist = async (userId) => {
+  const wishlists = await wishlistRepository.findByUserId(userId);
+  const items = wishlists.map(formatWishlistItem);
+
+  return { items, total: items.length };
+};
+
+// Get all wishlists (Admin) in the flat shape expected by the admin table.
+export const getAllWishlists = async (options = {}) => {
+  const page = Math.max(Number(options.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(options.limit) || 8, 1), 100);
+  const result = await wishlistRepository.findAllPaginated(
+    limit,
+    page,
+    {
+      userId: options.userId === undefined ? undefined : Number(options.userId),
+      productId:
+        options.productId === undefined ? undefined : Number(options.productId),
+    }
+  );
+
+  return {
+    ...result,
+    wishlists: result.wishlists.map(formatAdminWishlist),
+  };
 };
 
 // Add product to wishlist (User)
-export const addWishlist = async (userId, productId) => {
-  const wishlists = await wishlistRepository.findByUserId(userId);
+export const addWishlist = async (userId, data = {}) => {
+  const productId =
+    data && typeof data === "object" ? data.productId : data;
+  const product = await wishlistRepository.findProductById(productId);
 
-  const exists = wishlists.some(
-    (item) => Number(item.productId) === Number(productId)
-  );
+  if (!product) {
+    throw new AppError("Product not found", 404);
+  }
 
-  if (exists) {
+  const existing = await wishlistRepository.findByUserAndProduct(userId, productId);
+  if (existing) {
     throw new AppError("Product already exists in wishlist", 400);
   }
 
-  return await wishlistRepository.createWishlist({
-    userId,
-    productId
-  });
+  await wishlistRepository.createWishlist({ userId, productId });
+  return getMyWishlist(userId);
+};
+
+export const toggleWishlist = async (userId, data = {}) => {
+  const productId = data.productId;
+  const existing = await wishlistRepository.findByUserAndProduct(userId, productId);
+
+  if (existing) {
+    await wishlistRepository.deleteWishlist(existing.id);
+  } else {
+    const product = await wishlistRepository.findProductById(productId);
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
+    await wishlistRepository.createWishlist({ userId, productId });
+  }
+
+  return getMyWishlist(userId);
+};
+
+export const removeWishlistItem = async (userId, data = {}) => {
+  await wishlistRepository.deleteByUserAndProduct(userId, data.productId);
+  return getMyWishlist(userId);
+};
+
+export const clearWishlist = async (userId) => {
+  const removedCount = await wishlistRepository.clearByUser(userId);
+  return { removedCount };
+};
+
+export const getWishlistCount = async (userId) => {
+  return { total: await wishlistRepository.countByUser(userId) };
+};
+
+export const getWishlistStats = async () => {
+  return wishlistRepository.getWishlistStats();
+};
+
+export const getByUser = async (userId) => {
+  const wishlists = await wishlistRepository.findByUserId(userId);
+  return wishlists.map(formatWishlistItem);
+};
+
+export const removeWishlistById = async (id) => {
+  const wishlist = await wishlistRepository.findById(id);
+  if (!wishlist) {
+    throw new AppError("Wishlist not found", 404);
+  }
+
+  await wishlistRepository.deleteWishlist(id);
+};
+
+export const clearWishlistByUser = async (userId) => {
+  return wishlistRepository.clearByUser(userId);
 };
 
 // Delete wishlist (Admin)
@@ -106,4 +199,14 @@ export default {
     getWishlistPaginated,
     addWishlist,
     searchWishlist,
+    getMyWishlist,
+    add: addWishlist,
+    toggle: toggleWishlist,
+    remove: removeWishlistItem,
+    clear: clearWishlist,
+    count: getWishlistCount,
+    stats: getWishlistStats,
+    getByUser,
+    removeById: removeWishlistById,
+    clearByUser: clearWishlistByUser,
 }
