@@ -114,7 +114,7 @@ export const createCategory = async (data) => {
     throw new AppError("Category already exists", 400);
   }
 
-  const category = await categoryRepository.create({
+  const category = await categoryRepository.createCategory({
     name,
     description: data.description ? String(data.description).trim() : null,
     image: data.image ? String(data.image).trim() : null,
@@ -192,7 +192,7 @@ export const updateCategory = async (id, data) => {
       data.isActive === true || data.isActive === "true";
   }
 
-  await categoryRepository.update(category, categoryData);
+  await categoryRepository.updateCategory(category, categoryData);
 
   const productCount = await categoryRepository.countProducts(categoryData.name || category.name);
 
@@ -224,7 +224,7 @@ export const deleteCategory = async (id) => {
     );
   }
 
-  await categoryRepository.delete(id);
+  await categoryRepository.deleteCategory(id);
 
   return { message: "Category deleted successfully" };
 };

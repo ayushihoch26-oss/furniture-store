@@ -8,7 +8,7 @@ const getParams = (req) => ({ ...req.query, ...req.body });
 // Active categories (dropdowns)
 export const options = async (req, res, next) => {
   try {
-    const result = await categoryService.options();
+    const result = await categoryService.getCategoryOptions();
     res.json(result);
   } catch (err) {
     next(err);
@@ -40,7 +40,7 @@ export const stats = async (req, res, next) => {
 // Get one Category (Admin)
 export const getById = async (req, res, next) => {
   try {
-    const category = await categoryService.getById(req.params.id);
+    const category = await categoryService.getCategoryById(req.params.id);
     res.json(category);
   } catch (err) {
     next(err);
@@ -50,7 +50,7 @@ export const getById = async (req, res, next) => {
 // Add Category (Admin)
 export const create = async (req, res, next) => {
   try {
-    const category = await categoryService.create(req.body);
+    const category = await categoryService.createCategory(req.body);
     res.status(201).json(category);
   } catch (err) {
     next(err);
@@ -60,7 +60,7 @@ export const create = async (req, res, next) => {
 // Edit Category (Admin)
 export const update = async (req, res, next) => {
   try {
-    const category = await categoryService.update(req.params.id, req.body);
+    const category = await categoryService.updateCategory(req.params.id, req.body);
     res.json(category);
   } catch (err) {
     next(err);
@@ -70,7 +70,7 @@ export const update = async (req, res, next) => {
 // Delete Category (Admin)
 export const remove = async (req, res, next) => {
   try {
-    await categoryService.remove(req.params.id);
+    await categoryService.deleteCategory(req.params.id);
 
     res.status(200).json({
       success: true,
