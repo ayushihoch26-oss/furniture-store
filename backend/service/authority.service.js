@@ -1,10 +1,16 @@
 // backend: src/service/authority.service.js
 import * as authorityRepository from "../repository/authority.repository.js";
+import {
+  validateAuthorityCreate,
+  validateAuthorityDeleteMany,
+  validateAuthorityId,
+  validateAuthorityList,
+  validateAuthorityPermissions,
+  validateAuthorityUpdate,
+} from "../validator/authority.validator.js";
 
 // ---------- Roles, statuses, pages and default permissions ----------
 const ROLES = ["Super Admin", "Manager", "Editor", "Support"];
-const STATUSES = ["Active", "Inactive"];
-
 const MODULES = [
   "Dashboard",
   "Order Management",
@@ -31,9 +37,6 @@ const fail = (message, status = 400) => {
   throw err;
 };
 
-const text = (value) => String(value ?? "").trim();
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const sanitize = (member) => {
   const obj = member.get({ plain: true });
   delete obj.permissions;
@@ -54,48 +57,19 @@ const modulesForRole = async (role) => {
 
 // ---------- Members ----------
 // Pagination, search, filters and sorting all happen in the database
-export const list = async ({
-  page = 1,
-  limit = 10,
-  search = "",
-  status = "",
-  role = "",
-  sortOrder = "desc",
-} = {}) => {
-  page = Math.max(Number(page) || 1, 1);
-  limit = Math.min(Math.max(Number(limit) || 10, 1), 100);
-  status = STATUSES.includes(status) ? status : "";
-  role = ROLES.includes(role) ? role : "";
-  sortOrder = String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc";
+export const list = async (options = {}) => {
+  const filters = validateAuthorityList(options);
 
   const [result, stats] = await Promise.all([
-    authorityRepository.pagintion({
-      page,
-      limit,
-      search: text(search),
-      status,
-      role,
-      sortOrder,
-    }),
+    authorityRepository.pagintion(filters),
     authorityRepository.getStats(),
   ]);
 
   return { ...result, members: result.members.map(sanitize), stats };
 };
 
-export const create = async ({
-  name,
-  email,
-  role = "Support",
-  status = "Active",
-} = {}) => {
-  name = text(name);
-  email = text(email).toLowerCase();
-
-  if (!name) fail("Name is required");
-  if (!EMAIL_REGEX.test(email)) fail("Invalid email address");
-  if (!ROLES.includes(role)) fail("Invalid role");
-  if (!STATUSES.includes(status)) fail("Invalid status");
+export const create = async (body = {}) => {
+  const { name, email, role, status } = validateAuthorityCreate(body);
 
   const existing = await authorityRepository.findByEmail(email);
   if (existing) fail("Email already registered", 409);
@@ -113,36 +87,18 @@ export const create = async ({
 };
 
 export const update = async (id, body = {}) => {
+  const validated = validateAuthorityUpdate(id, body);
+  id = validated.id;
+  const data = validated.data;
+
   const member = await authorityRepository.findById(id);
   if (!member) fail("Member not found", 404);
 
-  const data = {};
-
-  if (body.name !== undefined) {
-    if (!text(body.name)) fail("Name is required");
-    data.name = text(body.name);
-  }
-
-  if (body.email !== undefined) {
-    const email = text(body.email).toLowerCase();
-    if (!EMAIL_REGEX.test(email)) fail("Invalid email address");
-
-    if (email !== member.email) {
-      const taken = await authorityRepository.findByEmail(email);
-      if (taken && taken.id !== member.id)
-        fail("Email already registered", 409);
+  if (data.email !== undefined && data.email !== member.email) {
+    const taken = await authorityRepository.findByEmail(data.email);
+    if (taken && taken.id !== member.id) {
+      fail("Email already registered", 409);
     }
-    data.email = email;
-  }
-
-  if (body.role !== undefined) {
-    if (!ROLES.includes(body.role)) fail("Invalid role");
-    data.role = body.role;
-  }
-
-  if (body.status !== undefined) {
-    if (!STATUSES.includes(body.status)) fail("Invalid status");
-    data.status = body.status;
   }
 
   // Never leave the system without an active Super Admin
@@ -171,6 +127,7 @@ export const update = async (id, body = {}) => {
 };
 
 export const remove = async (id) => {
+  id = validateAuthorityId(id);
   const member = await authorityRepository.findById(id);
   if (!member) fail("Member not found", 404);
   if (member.role === "Super Admin") {
@@ -180,9 +137,7 @@ export const remove = async (id) => {
 };
 
 export const removeMany = async (ids = []) => {
-  if (!Array.isArray(ids) || ids.length === 0) {
-    fail("Select at least one member");
-  }
+  ids = validateAuthorityDeleteMany(ids);
 
   const members = await authorityRepository.findByIds(ids);
   if (members.some((m) => m.role === "Super Admin")) {
@@ -202,19 +157,12 @@ export const getPermissions = async () => {
 };
 
 export const savePermissions = async (permissions = {}) => {
+  permissions = validateAuthorityPermissions(permissions);
   for (const role of ROLES) {
     if (role === "Super Admin") continue; // always has every page
     if (permissions[role] === undefined) continue;
 
-    const modules = permissions[role];
-    if (
-      !Array.isArray(modules) ||
-      modules.some((m) => !MODULES.includes(m))
-    ) {
-      fail(`Invalid permissions for ${role}`);
-    }
-
-    await authorityRepository.updatePermissionsByRole(role, modules);
+    await authorityRepository.updatePermissionsByRole(role, permissions[role]);
   }
 
   return getPermissions();
