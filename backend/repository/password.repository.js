@@ -1,36 +1,44 @@
 import { Op } from "sequelize";
 import { Users } from "../models/index.js";
 
-const passwordRepository = {
-  findByEmail(email) {
-    return Users.findOne({ where: { email } });
-  },
+export const findByEmail = async (email) => {
+  return await Users.findOne({
+    where: { email },
+  });
+};
 
-  // Only returns the user if the token matches AND has not expired
-  findByValidResetToken(tokenHash) {
-    return Users.findOne({
-      where: {
-        resetPasswordToken: tokenHash,
-        resetPasswordExpires: { [Op.gt]: new Date() },
-      },
-    });
-  },
-
-  saveResetToken(user, tokenHash, expires) {
-    return user.update({
+// Only returns the user if the token matches AND has not expired
+export const findByValidResetToken = async (tokenHash) => {
+  return await Users.findOne({
+    where: {
       resetPasswordToken: tokenHash,
-      resetPasswordExpires: expires,
-    });
-  },
+      resetPasswordExpires: { [Op.gt]: new Date() },
+    },
+  });
+};
 
-  // Save the new password and make the link single-use
-  setNewPassword(user, passwordHash) {
-    return user.update({
-      password: passwordHash,
-      resetPasswordToken: null,
-      resetPasswordExpires: null,
-    });
-  },
+export const saveResetToken = async (user, tokenHash, expires) => {
+  return await user.update({
+    resetPasswordToken: tokenHash,
+    resetPasswordExpires: expires,
+  });
+};
+
+// Save the new password and make the link single-use
+export const setNewPassword = async (user, passwordHash) => {
+  return await user.update({
+    password: passwordHash,
+    resetPasswordToken: null,
+    resetPasswordExpires: null,
+  });
+};
+
+// Default export
+const passwordRepository = {
+  findByEmail,
+  findByValidResetToken,
+  saveResetToken,
+  setNewPassword,
 };
 
 export default passwordRepository;
