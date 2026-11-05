@@ -2,17 +2,17 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import passwordRepository from "../repository/password.repository.js";
 import { sendMail } from "../utils/mailer.js";
+import {
+  validateForgotPassword,
+  validateResetPassword,
+} from "../validator/password.validatior.js";
 
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 // FORGOT PASSWORD
-export const forgot = async ({ email }) => {
-  // Check email
-  if (!email) {
-    throw new Error("Email is required");
-  }
-
-  const user = await passwordRepository.findByEmail(email.trim().toLowerCase());
+export const forgot = async (data = {}) => {
+  const { email } = validateForgotPassword(data);
+  const user = await passwordRepository.findByEmail(email);
 
   // Same response for security
   if (!user) {
@@ -50,19 +50,8 @@ export const forgot = async ({ email }) => {
 };
 
 // RESET PASSWORD
-export const reset = async ({ token, password, confirmPassword }) => {
-  // Check fields
-  if (!token) {
-    throw new Error("Invalid or expired reset link");
-  }
-
-  if (!password || password.length < 8) {
-    throw new Error("Password must be at least 8 characters");
-  }
-
-  if (password !== confirmPassword) {
-    throw new Error("Passwords do not match");
-  }
+export const reset = async (data = {}) => {
+  const { token, password } = validateResetPassword(data);
 
   // Hash token
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
