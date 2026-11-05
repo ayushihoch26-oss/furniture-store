@@ -99,10 +99,7 @@ export const createForOrder = async (order, couponCode = null) => {
 
 // GET INVOICE BY ORDER ID
 export const getByOrderId = async (orderId, user) => {
-  const id = Number(String(orderId).replace(/\D/g, ""));
-  if (!id) throw new AppError("Invalid order id", 400);
-
-  const order = await orderRepository.findById(id);
+  const order = await orderRepository.findById(orderId);
   if (!order) throw new AppError("Order not found", 404);
 
   if (user.role !== "admin" && String(order.userId) !== String(user.id)) {
@@ -154,50 +151,8 @@ export const getByOrderId = async (orderId, user) => {
 };
 
 // GET ALL INVOICES
-export const list = async (query = {}) => {
+export const list = async (filters) => {
   await syncMissingInvoices();
-
-  let page = Math.max(1, Math.floor(Number(query.page) || 1));
-  let limit = Math.min(100, Math.max(1, Math.floor(Number(query.limit) || 10)));
-
-  let fromDate = query.fromDate || "";
-  let toDate = query.toDate || "";
-
-  if (fromDate && toDate && fromDate > toDate) {
-    [fromDate, toDate] = [toDate, fromDate];
-  }
-
-  let minTotal =
-    query.minTotal == null || query.minTotal === ""
-      ? null
-      : Number(query.minTotal);
-  let maxTotal =
-    query.maxTotal == null || query.maxTotal === ""
-      ? null
-      : Number(query.maxTotal);
-
-  if (minTotal !== null && maxTotal !== null && minTotal > maxTotal) {
-    [minTotal, maxTotal] = [maxTotal, minTotal];
-  }
-
-  const allowedSorts = ["id", "name", "total", "payment", "date"];
-
-  const filters = {
-    page,
-    limit,
-    search: String(query.search || "")
-      .trim()
-      .slice(0, 100),
-    paymentMethod: ["card", "cod"].includes(query.paymentMethod)
-      ? query.paymentMethod
-      : "",
-    fromDate,
-    toDate,
-    minTotal: Number.isFinite(minTotal) && minTotal >= 0 ? minTotal : null,
-    maxTotal: Number.isFinite(maxTotal) && maxTotal >= 0 ? maxTotal : null,
-    sortBy: allowedSorts.includes(query.sortBy) ? query.sortBy : "date",
-    sortOrder: String(query.sortOrder).toLowerCase() === "asc" ? "asc" : "desc",
-  };
 
   const result = await invoiceRepository.findPaginated(filters);
 
@@ -227,9 +182,9 @@ export const list = async (query = {}) => {
   return {
     rows,
     totalItems: result.count,
-    totalPages: Math.max(1, Math.ceil(result.count / limit)),
-    page,
-    limit,
+    totalPages: Math.max(1, Math.ceil(result.count / filters.limit)),
+    page: filters.page,
+    limit: filters.limit,
   };
 };
 
