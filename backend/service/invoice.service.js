@@ -2,6 +2,7 @@ import invoiceRepository from "../repository/invoice.repository.js";
 import orderRepository from "../repository/ordermanagement.repository.js";
 import db from "../models/index.js";
 
+// APP ERROR
 class AppError extends Error {
   constructor(message, statusCode = 500) {
     super(message);
@@ -9,6 +10,7 @@ class AppError extends Error {
   }
 }
 
+// STORE INFORMATION
 const STORE = {
   name: process.env.STORE_NAME || "FurnitureStore",
   address:
@@ -18,20 +20,102 @@ const STORE = {
   phone: process.env.STORE_PHONE || "+91 98765 43210",
 };
 
-const round = (number) => Math.round(number * 100) / 100;
+// SYNC MISSING INVOICES
+export const syncMissingInvoices = async () => {
+  const OrderModel = db.sequelize.models.Orders || db.sequelize.models.Order;
 
-// Convert ID 9 into 0009.
-const pad = (id) => String(id).padStart(4, "0");
+  if (!OrderModel) return;
 
-// Format one invoice for viewing or printing.
-function formatInvoice(invoice, order) {
+  const orders = await OrderModel.findAll({
+    attributes: ["id"],
+    raw: true,
+  });
+
+  const existingIds = new Set(
+    (await invoiceRepository.allOrderIds()).map(Number),
+  );
+
+  for (const orderData of orders) {
+    if (existingIds.has(Number(orderData.id))) continue;
+
+    try {
+      const order = await orderRepository.findById(orderData.id);
+      if (order) await createForOrder(order);
+    } catch (error) {
+      console.error(`Invoice error for order ${orderData.id}:`, error.message);
+    }
+  }
+};
+
+// CREATE INVOICE
+export const createForOrder = async (order, couponCode = null) => {
+  const existing = await invoiceRepository.findByOrderId(order.id);
+  if (existing) return existing;
+
+  const customer = order.user || {};
+  const items = order.items || [];
+
+  const itemsTotal =
+    Math.round(
+      items.reduce(
+        (sum, item) => sum + Number(item.price) * Number(item.quantity),
+        0,
+      ) * 100,
+    ) / 100;
+
+  const subtotal = Number(order.subtotal) || 0;
+  const tax = Number(order.tax) || 0;
+
+  return invoiceRepository.create({
+    orderId: order.id,
+    userId: order.userId,
+
+    customerName:
+      [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
+      "Customer",
+
+    email: customer.email,
+    phone: customer.phone,
+    street: customer.street,
+    apartment: customer.apartment,
+    city: customer.city,
+    state: customer.state,
+    zip: customer.zip,
+    country: customer.country,
+
+    itemsTotal,
+    discount: Math.round(Math.max(itemsTotal - subtotal, 0) * 100) / 100,
+    couponCode,
+
+    shippingCost: Number(order.shippingCost) || 0,
+    tax,
+    taxRate: subtotal > 0 ? Math.round((tax / subtotal) * 10000) / 10000 : 0,
+    total: Number(order.total) || 0,
+
+    paymentMethod: order.paymentMethod,
+    cardLast4: order.cardLast4 || "",
+  });
+};
+
+// GET INVOICE BY ORDER ID
+export const getByOrderId = async (orderId, user) => {
+  const id = Number(String(orderId).replace(/\D/g, ""));
+  if (!id) throw new AppError("Invalid order id", 400);
+
+  const order = await orderRepository.findById(id);
+  if (!order) throw new AppError("Order not found", 404);
+
+  if (user.role !== "admin" && String(order.userId) !== String(user.id)) {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const invoice = await createForOrder(order);
   const data = invoice.toJSON();
 
   return {
     id: data.id,
-    invoiceNumber: `INV-${pad(data.orderId)}`,
-    orderNumber: `#ORD${pad(data.orderId)}`,
-
+    invoiceNumber: `INV-${String(data.orderId).padStart(4, "0")}`,
+    orderNumber: `#ORD${String(data.orderId).padStart(4, "0")}`,
     issuedAt: data.createdAt,
 
     customer: {
@@ -63,65 +147,32 @@ function formatInvoice(invoice, order) {
 
     paymentMethod: data.paymentMethod,
     cardLast4: data.cardLast4 || "",
-
     paymentStatus: order.paymentStatus,
     orderStatus: order.status,
-
     store: STORE,
   };
-}
+};
 
-// Format one row in the admin invoice table.
-function formatRow(invoice) {
-  const data = invoice.toJSON ? invoice.toJSON() : invoice;
+// GET ALL INVOICES
+export const list = async (query = {}) => {
+  await syncMissingInvoices();
 
-  return {
-    id: data.id,
-    orderId: data.orderId,
-    invoiceNumber: `INV-${pad(data.orderId)}`,
-    orderNumber: `#ORD${pad(data.orderId)}`,
-
-    customerName: data.customerName,
-    email: data.email || "",
-    phone: data.phone || "",
-
-    itemsTotal: Number(data.itemsTotal),
-    discount: Number(data.discount),
-    couponCode: data.couponCode || "",
-    shippingCost: Number(data.shippingCost),
-    tax: Number(data.tax),
-    total: Number(data.total),
-
-    paymentMethod: data.paymentMethod,
-    cardLast4: data.cardLast4 || "",
-
-    issuedAt: data.createdAt,
-  };
-}
-
-// Prepare search, filters, sorting and pagination values.
-function prepareFilters(query = {}) {
-  let page = Number(query.page) || 1;
-  let limit = Number(query.limit) || 10;
-
-  page = Math.max(1, Math.floor(page));
-  limit = Math.min(100, Math.max(1, Math.floor(limit)));
+  let page = Math.max(1, Math.floor(Number(query.page) || 1));
+  let limit = Math.min(100, Math.max(1, Math.floor(Number(query.limit) || 10)));
 
   let fromDate = query.fromDate || "";
   let toDate = query.toDate || "";
 
-  // Swap dates if the start date is later.
   if (fromDate && toDate && fromDate > toDate) {
     [fromDate, toDate] = [toDate, fromDate];
   }
 
   let minTotal =
-    query.minTotal === "" || query.minTotal == null
+    query.minTotal == null || query.minTotal === ""
       ? null
       : Number(query.minTotal);
-
   let maxTotal =
-    query.maxTotal === "" || query.maxTotal == null
+    query.maxTotal == null || query.maxTotal === ""
       ? null
       : Number(query.maxTotal);
 
@@ -129,224 +180,97 @@ function prepareFilters(query = {}) {
     [minTotal, maxTotal] = [maxTotal, minTotal];
   }
 
-  // Only allow valid sorting columns.
   const allowedSorts = ["id", "name", "total", "payment", "date"];
 
-  let sortBy = allowedSorts.includes(query.sortBy) ? query.sortBy : "date";
-
-  let sortOrder =
-    String(query.sortOrder).toLowerCase() === "asc" ? "asc" : "desc";
-
-  return {
+  const filters = {
     page,
     limit,
     search: String(query.search || "")
       .trim()
       .slice(0, 100),
-
     paymentMethod: ["card", "cod"].includes(query.paymentMethod)
       ? query.paymentMethod
       : "",
-
     fromDate,
     toDate,
-    minTotal:
-      minTotal !== null && Number.isFinite(minTotal) && minTotal >= 0
-        ? minTotal
-        : null,
-
-    maxTotal:
-      maxTotal !== null && Number.isFinite(maxTotal) && maxTotal >= 0
-        ? maxTotal
-        : null,
-
-    sortBy,
-    sortOrder,
+    minTotal: Number.isFinite(minTotal) && minTotal >= 0 ? minTotal : null,
+    maxTotal: Number.isFinite(maxTotal) && maxTotal >= 0 ? maxTotal : null,
+    sortBy: allowedSorts.includes(query.sortBy) ? query.sortBy : "date",
+    sortOrder: String(query.sortOrder).toLowerCase() === "asc" ? "asc" : "desc",
   };
-}
 
-// Calculate percentage change.
-function calculateChange(current, previous) {
-  if (previous === 0) {
-    return current > 0 ? 100 : 0;
-  }
+  const result = await invoiceRepository.findPaginated(filters);
 
-  return round(((current - previous) / previous) * 100);
-}
+  const rows = result.rows.map((invoice) => {
+    const data = invoice.toJSON ? invoice.toJSON() : invoice;
 
-// Create invoices for orders that do not have an invoice.
-async function syncMissingInvoices() {
-  const models = db.sequelize.models;
-  const OrderModel = models.Orders || models.Order;
-
-  if (!OrderModel) {
-    console.warn("Orders model not found");
-    return;
-  }
-
-  const orders = await OrderModel.findAll({
-    attributes: ["id"],
-    raw: true,
+    return {
+      id: data.id,
+      orderId: data.orderId,
+      invoiceNumber: `INV-${String(data.orderId).padStart(4, "0")}`,
+      orderNumber: `#ORD${String(data.orderId).padStart(4, "0")}`,
+      customerName: data.customerName,
+      email: data.email || "",
+      phone: data.phone || "",
+      itemsTotal: Number(data.itemsTotal),
+      discount: Number(data.discount),
+      couponCode: data.couponCode || "",
+      shippingCost: Number(data.shippingCost),
+      tax: Number(data.tax),
+      total: Number(data.total),
+      paymentMethod: data.paymentMethod,
+      cardLast4: data.cardLast4 || "",
+      issuedAt: data.createdAt,
+    };
   });
 
-  const invoiceOrderIds = await invoiceRepository.allOrderIds();
-
-  const existingIds = new Set(invoiceOrderIds.map(Number));
-
-  for (const orderData of orders) {
-    if (existingIds.has(Number(orderData.id))) {
-      continue;
-    }
-
-    try {
-      const order = await orderRepository.findById(orderData.id);
-
-      if (order) {
-        await invoiceService.createForOrder(order);
-      }
-    } catch (error) {
-      console.error(
-        `Could not create invoice for order ${orderData.id}:`,
-        error.message,
-      );
-    }
-  }
-}
-
-const invoiceService = {
-  // Create an invoice for an order.
-  async createForOrder(order, couponCode = null) {
-    const existingInvoice = await invoiceRepository.findByOrderId(order.id);
-
-    if (existingInvoice) {
-      return existingInvoice;
-    }
-
-    const customer = order.user || {};
-    const items = order.items || [];
-
-    // Calculate the total price of all items.
-    const itemsTotal = round(
-      items.reduce((sum, item) => {
-        return sum + Number(item.price) * Number(item.quantity);
-      }, 0),
-    );
-
-    const subtotal = Number(order.subtotal) || 0;
-    const tax = Number(order.tax) || 0;
-
-    const invoiceData = {
-      orderId: order.id,
-      userId: order.userId,
-
-      customerName:
-        [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
-        "Customer",
-
-      email: customer.email,
-      phone: customer.phone,
-      street: customer.street,
-      apartment: customer.apartment,
-      city: customer.city,
-      state: customer.state,
-      zip: customer.zip,
-      country: customer.country,
-
-      itemsTotal,
-
-      discount: round(Math.max(itemsTotal - subtotal, 0)),
-
-      couponCode,
-
-      shippingCost: Number(order.shippingCost) || 0,
-      tax,
-
-      taxRate: subtotal > 0 ? Math.round((tax / subtotal) * 10000) / 10000 : 0,
-
-      total: Number(order.total) || 0,
-
-      paymentMethod: order.paymentMethod,
-      cardLast4: order.cardLast4 || "",
-    };
-
-    return invoiceRepository.create(invoiceData);
-  },
-
-  // Get one invoice using an order ID.
-  async getByOrderId(orderId, user) {
-    const id = Number(String(orderId).replace(/\D/g, ""));
-
-    if (!id) {
-      throw new AppError("Invalid order id", 400);
-    }
-
-    const order = await orderRepository.findById(id);
-
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
-
-    if (user.role !== "admin" && String(order.userId) !== String(user.id)) {
-      throw new AppError("Forbidden", 403);
-    }
-
-    const invoice = await invoiceService.createForOrder(order);
-
-    return formatInvoice(invoice, order);
-  },
-
-  // Get invoices for the admin table.
-  async list(query = {}) {
-    await syncMissingInvoices();
-
-    const filters = prepareFilters(query);
-
-    const result = await invoiceRepository.findPaginated(filters);
-
-    return {
-      rows: result.rows.map(formatRow),
-      totalItems: result.count,
-
-      totalPages: Math.max(1, Math.ceil(result.count / filters.limit)),
-
-      page: filters.page,
-      limit: filters.limit,
-    };
-  },
-
-  // Get invoice statistics for admin cards.
-  async stats() {
-    await syncMissingInvoices();
-
-    const now = new Date();
-
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-    const all = await invoiceRepository.summary();
-
-    const current = await invoiceRepository.summary(sevenDaysAgo, now);
-
-    const previous = await invoiceRepository.summary(
-      fourteenDaysAgo,
-      sevenDaysAgo,
-    );
-
-    return {
-      ...all,
-
-      changes: {
-        total: calculateChange(current.total, previous.total),
-
-        revenue: calculateChange(current.revenue, previous.revenue),
-
-        card: calculateChange(current.card, previous.card),
-
-        cod: calculateChange(current.cod, previous.cod),
-      },
-    };
-  },
+  return {
+    rows,
+    totalItems: result.count,
+    totalPages: Math.max(1, Math.ceil(result.count / limit)),
+    page,
+    limit,
+  };
 };
 
-export default invoiceService;
+// GET INVOICE STATISTICS
+export const stats = async () => {
+  await syncMissingInvoices();
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000);
+
+  const all = await invoiceRepository.summary();
+  const current = await invoiceRepository.summary(sevenDaysAgo, now);
+  const previous = await invoiceRepository.summary(
+    fourteenDaysAgo,
+    sevenDaysAgo,
+  );
+
+  const calculateChange = (current, previous) =>
+    previous === 0
+      ? current > 0
+        ? 100
+        : 0
+      : Math.round(((current - previous) / previous) * 10000) / 100;
+
+  return {
+    ...all,
+    changes: {
+      total: calculateChange(current.total, previous.total),
+      revenue: calculateChange(current.revenue, previous.revenue),
+      card: calculateChange(current.card, previous.card),
+      cod: calculateChange(current.cod, previous.cod),
+    },
+  };
+};
+
+// DEFAULT EXPORT
+export default {
+  syncMissingInvoices,
+  createForOrder,
+  getByOrderId,
+  list,
+  stats,
+};
