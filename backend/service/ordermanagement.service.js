@@ -278,11 +278,11 @@ export const list = async ({
   });
 
   return {
-    orders: result.rows.map(formatOrder),
-    total: result.count,
+    orders: result.orders.map(formatOrder),
+    total: result.total,
     page,
     limit,
-    totalPages: Math.ceil(result.count / limit),
+    totalPages: Math.ceil(result.total / limit),
   };
 };
 

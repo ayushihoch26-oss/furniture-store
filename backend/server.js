@@ -36,7 +36,6 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoute);
 app.use("/api/admin-profile", adminProfileRoutes);
 app.use("/api/categories", categoryroutes); 
-app.use("/api/products", categoryroutes);
 app.use("/api/authority", authorityRoutes);
 app.use("/api/invoices", invoiceRoute);
 app.use("/api/password", passwordRoute);
