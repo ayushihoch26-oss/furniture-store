@@ -1,42 +1,18 @@
-const SORT_FIELDS = ["id", "name", "total", "payment", "date"];
-const PAYMENT_METHODS = ["card", "cod"];
+export const validateInvoiceOrderId = (req, res, next) => {
+  const orderId = Number(req.params.orderId);
 
-function badRequest(res, message) {
-  return res.status(400).json({ success: false, message });
-}
-
-function isNumericValue(value) {
-  return (
-    (typeof value === "number" ||
-      (typeof value === "string" && value.trim() !== "")) &&
-    Number.isFinite(Number(value))
-  );
-}
-
-function isPositiveInteger(value) {
-  return isNumericValue(value) && Number.isInteger(Number(value)) && Number(value) > 0;
-}
-
-function isValidDate(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Order id must be a positive number",
+    });
   }
 
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
+  req.invoiceOrderId = orderId;
+  next();
+};
 
-export function validateInvoiceOrderId(req, res, next) {
-  if (!isPositiveInteger(req.params.orderId)) {
-    return badRequest(res, "Order id must be a positive number");
-  }
-
-  req.invoiceOrderId = Number(req.params.orderId);
-  return next();
-}
-
-export function validateInvoiceList(req, res, next) {
-  const options = req.query || {};
+export const validateInvoiceList = (req, res, next) => {
   const {
     page,
     limit,
@@ -48,105 +24,121 @@ export function validateInvoiceList(req, res, next) {
     maxTotal,
     sortBy,
     sortOrder,
-  } = options;
+  } = req.query;
 
-  if (page !== undefined && !isPositiveInteger(page)) {
-    return badRequest(res, "Page must be a positive number");
-  }
-
-  if (limit !== undefined && (!isPositiveInteger(limit) || Number(limit) > 100)) {
-    return badRequest(res, "Limit must be between 1 and 100");
-  }
-
-  if (search !== undefined && typeof search !== "string") {
-    return badRequest(res, "Search must be a string");
-  }
-
-  if (typeof search === "string" && search.length > 100) {
-    return badRequest(res, "Search must be 100 characters or less");
+  // Validate pagination
+  if (page && (!Number.isInteger(Number(page)) || Number(page) <= 0)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid page number",
+    });
   }
 
   if (
-    paymentMethod !== undefined &&
-    paymentMethod !== "" &&
-    !PAYMENT_METHODS.includes(paymentMethod)
+    limit &&
+    (!Number.isInteger(Number(limit)) ||
+      Number(limit) < 1 ||
+      Number(limit) > 100)
   ) {
-    return badRequest(res, "Invalid payment method");
+    return res.status(400).json({
+      success: false,
+      message: "Limit must be between 1 and 100",
+    });
   }
 
+  // Validate search
+  if (
+    search !== undefined &&
+    (typeof search !== "string" || search.length > 100)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Search must be 100 characters or less",
+    });
+  }
+
+  // Validate payment method
+  if (paymentMethod && !["card", "cod"].includes(paymentMethod)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payment method",
+    });
+  }
+
+  // Validate dates
   for (const date of [fromDate, toDate]) {
-    if (date !== undefined && date !== "" && !isValidDate(date)) {
-      return badRequest(res, "Date filters must be valid dates in YYYY-MM-DD format");
+    if (
+      date &&
+      (typeof date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        isNaN(new Date(date).getTime()) ||
+        new Date(date).toISOString().slice(0, 10) !== date)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Use YYYY-MM-DD",
+      });
     }
   }
 
+  // Validate totals
   for (const total of [minTotal, maxTotal]) {
     if (
       total !== undefined &&
       total !== "" &&
-      (!isNumericValue(total) || Number(total) < 0)
+      (!Number.isFinite(Number(total)) || Number(total) < 0)
     ) {
-      return badRequest(res, "Invoice totals must be zero or a positive number");
+      return res.status(400).json({
+        success: false,
+        message: "Invoice total must be a positive number",
+      });
     }
   }
 
-  if (
-    sortBy !== undefined &&
-    sortBy !== "" &&
-    (typeof sortBy !== "string" || !SORT_FIELDS.includes(sortBy))
-  ) {
-    return badRequest(res, "Invalid invoice sort option");
+  // Validate sorting
+  if (sortBy && !["id", "name", "total", "payment", "date"].includes(sortBy)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid sort option",
+    });
   }
 
-  if (
-    sortOrder !== undefined &&
-    sortOrder !== "" &&
-    (typeof sortOrder !== "string" ||
-      !["asc", "desc"].includes(sortOrder.toLowerCase()))
-  ) {
-    return badRequest(res, "Sort order must be asc or desc");
+  if (sortOrder && !["asc", "desc"].includes(sortOrder.toLowerCase())) {
+    return res.status(400).json({
+      success: false,
+      message: "Sort order must be asc or desc",
+    });
   }
 
-  let normalizedFromDate = fromDate || "";
-  let normalizedToDate = toDate || "";
-  if (
-    normalizedFromDate &&
-    normalizedToDate &&
-    normalizedFromDate > normalizedToDate
-  ) {
-    [normalizedFromDate, normalizedToDate] = [
-      normalizedToDate,
-      normalizedFromDate,
-    ];
+  // Normalize dates
+  let start = fromDate || "";
+  let end = toDate || "";
+
+  if (start && end && start > end) {
+    [start, end] = [end, start];
   }
 
-  let normalizedMinTotal =
-    minTotal == null || minTotal === "" ? null : Number(minTotal);
-  let normalizedMaxTotal =
-    maxTotal == null || maxTotal === "" ? null : Number(maxTotal);
-  if (
-    normalizedMinTotal !== null &&
-    normalizedMaxTotal !== null &&
-    normalizedMinTotal > normalizedMaxTotal
-  ) {
-    [normalizedMinTotal, normalizedMaxTotal] = [
-      normalizedMaxTotal,
-      normalizedMinTotal,
-    ];
+  // Normalize totals
+  let min = minTotal === "" || minTotal == null ? null : Number(minTotal);
+  let max = maxTotal === "" || maxTotal == null ? null : Number(maxTotal);
+
+  if (min !== null && max !== null && min > max) {
+    [min, max] = [max, min];
   }
 
+  // Store validated filters
   req.invoiceFilters = {
-    page: page === undefined ? 1 : Number(page),
-    limit: limit === undefined ? 10 : Number(limit),
+    page: Number(page) || 1,
+    limit: Number(limit) || 10,
     search: (search || "").trim(),
     paymentMethod: paymentMethod || "",
-    fromDate: normalizedFromDate,
-    toDate: normalizedToDate,
-    minTotal: normalizedMinTotal,
-    maxTotal: normalizedMaxTotal,
+    fromDate: start,
+    toDate: end,
+    minTotal: min,
+    maxTotal: max,
     sortBy: sortBy || "date",
-    sortOrder: String(sortOrder || "desc").toLowerCase(),
+    sortOrder: (sortOrder || "desc").toLowerCase(),
   };
 
-  return next();
-}
+  next();
+};
