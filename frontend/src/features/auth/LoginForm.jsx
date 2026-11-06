@@ -1,3 +1,4 @@
+
 import {
   Alert,
   Box,
@@ -11,8 +12,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
+
 import { BROWN, fieldSx, primaryBtnSx } from "./authStyles";
 
 export default function LoginForm({
@@ -29,12 +32,15 @@ export default function LoginForm({
 }) {
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate>
+
+      {/* Server Error */}
       {serverError && (
         <Alert severity="error" sx={{ mb: "20px", borderRadius: 0 }}>
           {serverError}
         </Alert>
       )}
 
+      {/* Email Field */}
       <TextField
         fullWidth
         label="Email"
@@ -48,6 +54,7 @@ export default function LoginForm({
         sx={{ ...fieldSx, mb: "20px" }}
       />
 
+      {/* Password Field */}
       <TextField
         fullWidth
         label="Password"
@@ -63,10 +70,10 @@ export default function LoginForm({
           endAdornment: (
             <InputAdornment position="end">
               <IconButton
-                aria-label="Toggle password visibility"
-                onClick={() => setShowPass((current) => !current)}
+                onClick={() => setShowPass(!showPass)}
                 edge="end"
                 size="small"
+                aria-label="Toggle password visibility"
               >
                 {showPass ? (
                   <VisibilityOff fontSize="small" />
@@ -79,6 +86,7 @@ export default function LoginForm({
         }}
       />
 
+      {/* Remember Me and Forgot Password */}
       <Box
         sx={{
           display: "flex",
@@ -91,7 +99,7 @@ export default function LoginForm({
           control={
             <Checkbox
               checked={remember}
-              onChange={(event) => setRemember(event.target.checked)}
+              onChange={(e) => setRemember(e.target.checked)}
               size="small"
               sx={{
                 color: "var(--c-999999)",
@@ -105,6 +113,7 @@ export default function LoginForm({
             </Typography>
           }
         />
+
         <Typography
           component={Link}
           to="/forgot-password"
@@ -114,6 +123,7 @@ export default function LoginForm({
         </Typography>
       </Box>
 
+      {/* Login Button */}
       <Button
         type="submit"
         fullWidth
@@ -122,13 +132,19 @@ export default function LoginForm({
         disabled={loading}
         sx={primaryBtnSx}
       >
-        {loading ? <CircularProgress size={22} color="inherit" /> : "Login"}
+        {loading ? (
+          <CircularProgress size={22} color="inherit" />
+        ) : (
+          "Login"
+        )}
       </Button>
 
+      {/* OR Divider */}
       <Divider sx={{ my: "28px", fontSize: 12, color: "var(--c-999999)" }}>
         or
       </Divider>
 
+      {/* Google Button */}
       <Button
         fullWidth
         variant="outlined"
@@ -148,6 +164,7 @@ export default function LoginForm({
         Continue with Google
       </Button>
 
+      {/* Register Link */}
       <Typography
         sx={{
           fontSize: 14,
@@ -156,7 +173,8 @@ export default function LoginForm({
           mt: "28px",
         }}
       >
-        Don&apos;t have an account?{" "}
+        Don't have an account?{" "}
+
         <Typography
           component={Link}
           to="/register"
@@ -170,6 +188,7 @@ export default function LoginForm({
           Register
         </Typography>
       </Typography>
+
     </Box>
   );
 }
