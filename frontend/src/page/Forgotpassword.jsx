@@ -9,11 +9,8 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 
-import AuthLayout, {
-  BROWN,
-  fieldSx,
-  primaryBtnSx,
-} from "../components/AuthLayout";
+import AuthLayout from "../components/AuthLayout";
+import { BROWN, fieldSx, primaryBtnSx } from "../features/auth/authStyles";
 import { forgotPassword } from "../service/password.service";
 
 export default function ForgotPassword() {

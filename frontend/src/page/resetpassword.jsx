@@ -12,11 +12,8 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link, useParams } from "react-router-dom";
 
-import AuthLayout, {
-  BROWN,
-  fieldSx,
-  primaryBtnSx,
-} from "../components/AuthLayout";
+import AuthLayout from "../components/AuthLayout";
+import { BROWN, fieldSx, primaryBtnSx } from "../features/auth/authStyles";
 import { resetPassword } from "../service/password.service";
 
 // Route: /reset-password/:token  (this is the link inside the email)

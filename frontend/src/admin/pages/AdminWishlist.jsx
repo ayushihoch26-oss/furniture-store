@@ -278,7 +278,7 @@ export default function AdminWishlist() {
     },
     {
       title: "Customers",
-      value: new Set(wishlists.map((item) => item[1])).size,
+      value: new Set(wishlists.map((item) => item.userId ?? item[1])).size,
       change: "Customers with saved items",
     },
     {
@@ -286,13 +286,17 @@ export default function AdminWishlist() {
       value:
         "₹" +
         wishlists
-          .reduce((sum, item) => sum + Number(item[5]), 0)
+          .reduce((sum, item) => sum + (Number(item.price ?? item[6]) || 0), 0)
           .toLocaleString("en-IN"),
       change: "Combined product value",
     },
     {
       title: "Product Categories",
-      value: new Set(wishlists.map((item) => item[3])).size,
+      value: new Set(
+        wishlists
+          .map((item) => item.category ?? item[4])
+          .filter((category) => category),
+      ).size,
       change: "Categories in wishlist",
     },
   ];

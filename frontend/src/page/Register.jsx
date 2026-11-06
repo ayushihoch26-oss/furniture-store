@@ -15,11 +15,8 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 
-import AuthLayout, {
-  BROWN,
-  fieldSx,
-  primaryBtnSx,
-} from "../components/AuthLayout";
+import AuthLayout from "../components/AuthLayout";
+import { BROWN, fieldSx, primaryBtnSx } from "../features/auth/authStyles";
 import { registerUser } from "../service/register.service";
 
 export default function Register() {

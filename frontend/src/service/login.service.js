@@ -51,6 +51,10 @@ export const loginUser = async ({ email, password, remember = true }) => {
     password,
   });
 
+  if (!response.data?.token || !response.data?.user) {
+    throw new Error("Login response is missing user or token");
+  }
+
   saveSession(response.data, remember);
 
   return response.data;
