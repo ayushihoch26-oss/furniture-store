@@ -1,46 +1,14 @@
 import { Readable } from "node:stream";
-import adminProfileRepository from "../repository/adminProfile.repository.js";
+import adminProfileRepository from "../repository/adminprofile.repository.js";
 import cloudinary from "../config/cloudinary.js";
+import {
+  validateImage,
+  validateSocial,
+  validateUpdate,
+} from "../validator/adminprofile.validator.js";
 
-class AppError extends Error {
-  constructor(message, statusCode = 500) {
-    super(message);
-    this.statusCode = statusCode;
-  }
-}
-
-const BIO_LIMIT = 250;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SOCIAL_FIELDS = {
-  google: "linkedGoogle",
-  facebook: "linkedFacebook",
-  x: "linkedX",
-};
-
-const log = (...args) => console.log("[adminProfile]", ...args);
-
-// Shape sent to the frontend (same field names the page already uses)
-const formatProfile = (profile) => ({
-  image: profile.image || "",
-  firstName: profile.firstName,
-  lastName: profile.lastName,
-  email: profile.email || "",
-  password: "**********", // the real password is never sent
-  countryCode: profile.countryCode,
-  phone: profile.phone || "",
-  birthDate: profile.birthDate || "",
-  location: profile.location || "",
-  card: profile.card || "",
-  bio: profile.bio || "",
-  linked: {
-    google: profile.linkedGoogle,
-    facebook: profile.linkedFacebook,
-    x: profile.linkedX,
-  },
-});
-
-// Get the profile, creating an empty one the first time
-const getOrCreate = async (user) => {
+// Get Admin Profile
+export const get = async (user) => {
   let profile = await adminProfileRepository.findByUserId(user.id);
 
   if (!profile) {
@@ -48,104 +16,191 @@ const getOrCreate = async (user) => {
       userId: user.id,
       email: user.email || null,
     });
-    log("created profile for user", user.id);
   }
 
-  return profile;
+  return {
+    image: profile.image || "",
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email || "",
+    password: "**********",
+    countryCode: profile.countryCode,
+    phone: profile.phone || "",
+    birthDate: profile.birthDate || "",
+    location: profile.location || "",
+    card: profile.card || "",
+    bio: profile.bio || "",
+    linked: {
+      google: profile.linkedGoogle,
+      facebook: profile.linkedFacebook,
+      x: profile.linkedX,
+    },
+  };
 };
 
-// Validate + clean the editable fields
-const validateProfile = (data = {}) => {
-  const clean = {};
+// Update Admin Profile
+export const update = async (user, data) => {
+  const clean = validateUpdate(data);
+  let profile = await adminProfileRepository.findByUserId(user.id);
 
-  for (const field of ["firstName", "lastName"]) {
-    const value = String(data[field] ?? "").trim();
-    if (!value) throw new AppError(`${field} is required`, 400);
-    clean[field] = value;
+  if (!profile) {
+    profile = await adminProfileRepository.create({
+      userId: user.id,
+      email: user.email || null,
+    });
   }
 
-  const email = String(data.email ?? "").trim();
-  if (!EMAIL_REGEX.test(email)) throw new AppError("Enter a valid email", 400);
-  clean.email = email;
+  await adminProfileRepository.update(profile, clean);
 
-  const bio = String(data.bio ?? "");
-  if (bio.length > BIO_LIMIT) {
-    throw new AppError(
-      `Biography must be ${BIO_LIMIT} characters or less`,
-      400,
-    );
-  }
-  clean.bio = bio;
-
-  clean.countryCode = String(data.countryCode || "+1").trim();
-  clean.phone = String(data.phone ?? "").trim();
-  clean.location = String(data.location ?? "").trim();
-  clean.card = String(data.card ?? "").trim();
-  clean.birthDate = data.birthDate ? String(data.birthDate) : null; // YYYY-MM-DD
-
-  return clean;
+  return {
+    image: profile.image || "",
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email || "",
+    password: "**********",
+    countryCode: profile.countryCode,
+    phone: profile.phone || "",
+    birthDate: profile.birthDate || "",
+    location: profile.location || "",
+    card: profile.card || "",
+    bio: profile.bio || "",
+    linked: {
+      google: profile.linkedGoogle,
+      facebook: profile.linkedFacebook,
+      x: profile.linkedX,
+    },
+  };
 };
 
-const uploadToCloudinary = (buffer) =>
-  new Promise((resolve, reject) => {
+// Upload Profile Image
+export const uploadImage = async (user, file) => {
+  validateImage(file);
+
+  let profile = await adminProfileRepository.findByUserId(user.id);
+
+  if (!profile) {
+    profile = await adminProfileRepository.create({
+      userId: user.id,
+      email: user.email || null,
+    });
+  }
+
+  const uploaded = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "furniture/admin-profiles", resource_type: "image" },
-      (error, uploaded) => (error ? reject(error) : resolve(uploaded)),
+      {
+        folder: "furniture/admin-profiles",
+        resource_type: "image",
+      },
+      (error, uploaded) => {
+        if (error) reject(error);
+        else resolve(uploaded);
+      },
     );
-    Readable.from(buffer).pipe(stream);
+
+    Readable.from(file.buffer).pipe(stream);
   });
 
-const adminProfileService = {
-  async get(user) {
-    const profile = await getOrCreate(user);
-    return formatProfile(profile);
-  },
+  await adminProfileRepository.update(profile, {
+    image: uploaded.secure_url,
+  });
 
-  async update(user, data) {
-    const profile = await getOrCreate(user);
-    await adminProfileRepository.update(profile, validateProfile(data));
-    log("profile updated for user", user.id);
-    return formatProfile(profile);
-  },
-
-  async uploadImage(user, file) {
-    if (!file)
-      throw new AppError("No image received. Use the field name 'image'.", 400);
-    if (!file.mimetype?.startsWith("image/")) {
-      throw new AppError("Please choose an image file", 400);
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      throw new AppError("Image must be smaller than 2 MB", 400);
-    }
-
-    const profile = await getOrCreate(user);
-    const uploaded = await uploadToCloudinary(file.buffer);
-
-    await adminProfileRepository.update(profile, {
-      image: uploaded.secure_url,
-    });
-    log("photo updated for user", user.id);
-    return formatProfile(profile);
-  },
-
-  async deleteImage(user) {
-    const profile = await getOrCreate(user);
-    await adminProfileRepository.update(profile, { image: null });
-    log("photo removed for user", user.id);
-    return formatProfile(profile);
-  },
-
-  // key: google | facebook | x
-  async setSocial(user, key, linked) {
-    const field = SOCIAL_FIELDS[key];
-    if (!field) throw new AppError("Unknown social account", 400);
-
-    const profile = await getOrCreate(user);
-    await adminProfileRepository.update(profile, {
-      [field]: linked === true || linked === "true",
-    });
-    return formatProfile(profile);
-  },
+  return {
+    image: profile.image || "",
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email || "",
+    password: "**********",
+    countryCode: profile.countryCode,
+    phone: profile.phone || "",
+    birthDate: profile.birthDate || "",
+    location: profile.location || "",
+    card: profile.card || "",
+    bio: profile.bio || "",
+    linked: {
+      google: profile.linkedGoogle,
+      facebook: profile.linkedFacebook,
+      x: profile.linkedX,
+    },
+  };
 };
 
-export default adminProfileService;
+// Delete Profile Image
+export const deleteImage = async (user) => {
+  let profile = await adminProfileRepository.findByUserId(user.id);
+
+  if (!profile) {
+    profile = await adminProfileRepository.create({
+      userId: user.id,
+      email: user.email || null,
+    });
+  }
+
+  await adminProfileRepository.update(profile, {
+    image: null,
+  });
+
+  return {
+    image: "",
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email || "",
+    password: "**********",
+    countryCode: profile.countryCode,
+    phone: profile.phone || "",
+    birthDate: profile.birthDate || "",
+    location: profile.location || "",
+    card: profile.card || "",
+    bio: profile.bio || "",
+    linked: {
+      google: profile.linkedGoogle,
+      facebook: profile.linkedFacebook,
+      x: profile.linkedX,
+    },
+  };
+};
+
+// Social Account
+export const setSocial = async (user, key, linked) => {
+  const { field, linked: linkedValue } = validateSocial(key, linked);
+
+  let profile = await adminProfileRepository.findByUserId(user.id);
+
+  if (!profile) {
+    profile = await adminProfileRepository.create({
+      userId: user.id,
+      email: user.email || null,
+    });
+  }
+
+  await adminProfileRepository.update(profile, {
+    [field]: linkedValue,
+  });
+
+  return {
+    image: profile.image || "",
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email || "",
+    password: "**********",
+    countryCode: profile.countryCode,
+    phone: profile.phone || "",
+    birthDate: profile.birthDate || "",
+    location: profile.location || "",
+    card: profile.card || "",
+    bio: profile.bio || "",
+    linked: {
+      google: profile.linkedGoogle,
+      facebook: profile.linkedFacebook,
+      x: profile.linkedX,
+    },
+  };
+};
+
+// Default Export
+export default {
+  get,
+  update,
+  uploadImage,
+  deleteImage,
+  setSocial,
+};

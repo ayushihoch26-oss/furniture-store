@@ -1,4 +1,3 @@
-
 import * as wishlistRepository from "../repository/wishlist.repository.js";
 
 // Custom error
@@ -68,15 +67,11 @@ export const getMyWishlist = async (userId) => {
 export const getAllWishlists = async (options = {}) => {
   const page = Math.max(Number(options.page) || 1, 1);
   const limit = Math.min(Math.max(Number(options.limit) || 8, 1), 100);
-  const result = await wishlistRepository.findAllPaginated(
-    limit,
-    page,
-    {
-      userId: options.userId === undefined ? undefined : Number(options.userId),
-      productId:
-        options.productId === undefined ? undefined : Number(options.productId),
-    }
-  );
+  const result = await wishlistRepository.findAllPaginated(limit, page, {
+    userId: options.userId === undefined ? undefined : Number(options.userId),
+    productId:
+      options.productId === undefined ? undefined : Number(options.productId),
+  });
 
   return {
     ...result,
@@ -86,15 +81,17 @@ export const getAllWishlists = async (options = {}) => {
 
 // Add product to wishlist (User)
 export const addWishlist = async (userId, data = {}) => {
-  const productId =
-    data && typeof data === "object" ? data.productId : data;
+  const productId = data && typeof data === "object" ? data.productId : data;
   const product = await wishlistRepository.findProductById(productId);
 
   if (!product) {
     throw new AppError("Product not found", 404);
   }
 
-  const existing = await wishlistRepository.findByUserAndProduct(userId, productId);
+  const existing = await wishlistRepository.findByUserAndProduct(
+    userId,
+    productId,
+  );
   if (existing) {
     throw new AppError("Product already exists in wishlist", 400);
   }
@@ -105,7 +102,10 @@ export const addWishlist = async (userId, data = {}) => {
 
 export const toggleWishlist = async (userId, data = {}) => {
   const productId = data.productId;
-  const existing = await wishlistRepository.findByUserAndProduct(userId, productId);
+  const existing = await wishlistRepository.findByUserAndProduct(
+    userId,
+    productId,
+  );
 
   if (existing) {
     await wishlistRepository.deleteWishlist(existing.id);
@@ -168,7 +168,7 @@ export const searchWishlist = async (productName) => {
   }
 
   return await wishlistRepository.searchWishlistByProductName(
-    productName.trim()
+    productName.trim(),
   );
 };
 
@@ -181,7 +181,7 @@ export const getWishlistPaginated = async (limit = 8, page = 1) => {
 export const getWishlistByDate = async (startDate, endDate) => {
   return await wishlistRepository.filterByDate({
     startDate,
-    endDate
+    endDate,
   });
 };
 
@@ -191,22 +191,22 @@ export const sortWishlistByPrice = async (order = "asc") => {
 };
 
 export default {
-    sortWishlistByPrice,
-    getAllWishlists,
-    getWishlistByDate,
-    getWishlistById,
-    getWishlistByUserId,
-    getWishlistPaginated,
-    addWishlist,
-    searchWishlist,
-    getMyWishlist,
-    add: addWishlist,
-    toggle: toggleWishlist,
-    remove: removeWishlistItem,
-    clear: clearWishlist,
-    count: getWishlistCount,
-    stats: getWishlistStats,
-    getByUser,
-    removeById: removeWishlistById,
-    clearByUser: clearWishlistByUser,
-}
+  sortWishlistByPrice,
+  getAllWishlists,
+  getWishlistByDate,
+  getWishlistById,
+  getWishlistByUserId,
+  getWishlistPaginated,
+  addWishlist,
+  searchWishlist,
+  getMyWishlist,
+  add: addWishlist,
+  toggle: toggleWishlist,
+  remove: removeWishlistItem,
+  clear: clearWishlist,
+  count: getWishlistCount,
+  stats: getWishlistStats,
+  getByUser,
+  removeById: removeWishlistById,
+  clearByUser: clearWishlistByUser,
+};
