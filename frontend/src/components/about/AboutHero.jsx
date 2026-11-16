@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
-import { IMAGES } from "../aboutData";
-import { anim } from "../../../styles/aboutStyles";
+import { IMAGES } from "../../features/about/aboutData";
+import { anim } from "../../styles/aboutStyles";
 import { Photo } from "./AboutPrimitives";
 
 export default function PageHero() {

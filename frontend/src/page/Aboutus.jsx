@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import HighlightCard from "../components/about/HighlightCard";
 import aboutImage from "../assets/aboutus-bg.jpg";
 import livingRoomImage from "../assets/banner.jpg";
 
@@ -20,24 +21,6 @@ const highlights = [
     text: "Our team is here to help you choose furniture that fits your needs.",
   },
 ];
-
-function HighlightCard({ title, text }) {
-  return (
-    <Box
-      sx={{
-        p: 3,
-        bgcolor: "#f7f5f2",
-      }}
-    >
-      <Typography component="h3" sx={{ fontSize: 20, fontWeight: 600, mb: 1 }}>
-        {title}
-      </Typography>
-      <Typography sx={{ color: "text.secondary", lineHeight: 1.7 }}>
-        {text}
-      </Typography>
-    </Box>
-  );
-}
 
 export default function AboutUs() {
   return (

@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { ArrowForward } from "@mui/icons-material";
-import { COLLECTIONS, IMAGES } from "../aboutData";
-import { BROWN, GAP, GREY_BG, SIDE, stagger, zoomOnHover } from "../../../styles/aboutStyles";
+import { COLLECTIONS, IMAGES } from "../../features/about/aboutData";
+import { BROWN, GAP, GREY_BG, SIDE, stagger, zoomOnHover } from "../../styles/aboutStyles";
 import { Photo, Reveal } from "./AboutPrimitives";
 
 export default function Collections() {

@@ -2,15 +2,15 @@ import { Box, GlobalStyles } from "@mui/material";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { ANIMATION_STYLES } from "../../styles/aboutStyles";
-import AboutHero from "./components/AboutHero";
-import AboutIntro from "./components/AboutIntro";
-import AboutBanner from "./components/AboutBanner";
-import AboutStats from "./components/AboutStats";
-import AboutFeatures from "./components/AboutFeatures";
-import AboutTeam from "./components/AboutTeam";
-import AboutVideo from "./components/AboutVideo";
-import AboutCollections from "./components/AboutCollections";
-import AboutInstagram from "./components/AboutInstagram";
+import AboutHero from "../../components/about/AboutHero";
+import AboutIntro from "../../components/about/AboutIntro";
+import AboutBanner from "../../components/about/AboutBanner";
+import AboutStats from "../../components/about/AboutStats";
+import AboutFeatures from "../../components/about/AboutFeatures";
+import AboutTeam from "../../components/about/AboutTeam";
+import AboutVideo from "../../components/about/AboutVideo";
+import AboutCollections from "../../components/about/AboutCollections";
+import AboutInstagram from "../../components/about/AboutInstagram";
 
 export default function AboutUs() {
   return (

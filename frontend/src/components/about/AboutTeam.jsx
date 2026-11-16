@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { Person } from "@mui/icons-material";
-import { TEAM } from "../aboutData";
-import { BROWN, EASE, GAP, GREY_BG, SIDE, heading, stagger } from "../../../styles/aboutStyles";
+import { TEAM } from "../../features/about/aboutData";
+import { BROWN, EASE, GAP, GREY_BG, SIDE, heading, stagger } from "../../styles/aboutStyles";
 import { Reveal } from "./AboutPrimitives";
 
 export default function Team() {

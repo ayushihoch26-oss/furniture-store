@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
-import { IMAGES } from "../aboutData";
-import { GAP, GREY_BG, SIDE, zoomOnHover } from "../../../styles/aboutStyles";
+import { IMAGES } from "../../features/about/aboutData";
+import { GAP, GREY_BG, SIDE, zoomOnHover } from "../../styles/aboutStyles";
 import { BrownButton, Photo, Reveal } from "./AboutPrimitives";
 
 function TextCard({ bg, title, text, button }) {

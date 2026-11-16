@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
-import { IMAGES } from "../aboutData";
-import { SIDE, heading, stagger, zoomOnHover } from "../../../styles/aboutStyles";
+import { IMAGES } from "../../features/about/aboutData";
+import { SIDE, heading, stagger, zoomOnHover } from "../../styles/aboutStyles";
 import { Photo, Reveal } from "./AboutPrimitives";
 
 export default function Instagram() {

@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { PlayArrow } from "@mui/icons-material";
-import { IMAGES } from "../aboutData";
-import { SIDE, zoomOnHover } from "../../../styles/aboutStyles";
+import { IMAGES } from "../../features/about/aboutData";
+import { SIDE, zoomOnHover } from "../../styles/aboutStyles";
 import { Photo, Reveal } from "./AboutPrimitives";
 
 export default function Video() {

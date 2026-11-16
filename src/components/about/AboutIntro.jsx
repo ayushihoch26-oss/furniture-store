@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { BROWN } from "../../../styles/aboutStyles";
+import { BROWN } from "../../styles/aboutStyles";
 import { Reveal } from "./AboutPrimitives";
 
 export default function Intro() {

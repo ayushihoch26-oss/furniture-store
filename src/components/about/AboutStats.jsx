@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
-import { STATS } from "../aboutData";
-import { BROWN, SIDE, stagger } from "../../../styles/aboutStyles";
+import { STATS } from "../../features/about/aboutData";
+import { BROWN, SIDE, stagger } from "../../styles/aboutStyles";
 import { CountUp, Reveal } from "./AboutPrimitives";
 
 export default function Stats() {
