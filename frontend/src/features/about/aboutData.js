@@ -3,31 +3,26 @@ import bg1 from "../../assets/aboutus-bg.jpg";
 import sofa from "../../assets/banner.jpg";
 import featureleft from "../../assets/aboutpage-fea.png";
 import images from "../../assets/images.jpg";
-import { U, ROOM } from "../../assets/furnitureImages";
-
-const image = (id) => ({
-  src: U(id, 1200, 800),
-  fallback: U(ROOM.showroom, 1200, 800),
-});
+import { createAboutImage } from "../../utils/aboutImages";
 
 export const IMAGES = {
   hero: { src: bg1, fallback: bg1 },
   banner: { src: sofa, fallback: sofa },
   featureLeft: { src: featureleft, fallback: featureleft },
   featureRight: { src: images, fallback: images },
-  video: image("photo-1600607687939-ce8a6c25118c"),
+  video: createAboutImage("photo-1600607687939-ce8a6c25118c"),
 
   collections: [
-    image("photo-1530018607912-eff2daa1bac4"),
-    image("photo-1615066390971-03e4e1c36ddf"),
+    createAboutImage("photo-1530018607912-eff2daa1bac4"),
+    createAboutImage("photo-1615066390971-03e4e1c36ddf"),
   ],
 
   instagram: [
-    image("photo-1616486338812-3dadae4b4ace"),
-    image("photo-1600607687920-4e2a09cf159d"),
-    image("photo-1555041469-a586c61ea9bc"),
-    image("photo-1600210492486-724fe5c67fb0"),
-    image("photo-1586023492125-27b2c045efd7"),
+    createAboutImage("photo-1616486338812-3dadae4b4ace"),
+    createAboutImage("photo-1600607687920-4e2a09cf159d"),
+    createAboutImage("photo-1555041469-a586c61ea9bc"),
+    createAboutImage("photo-1600210492486-724fe5c67fb0"),
+    createAboutImage("photo-1586023492125-27b2c045efd7"),
   ],
 };
 
