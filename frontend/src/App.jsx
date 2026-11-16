@@ -41,7 +41,9 @@ function App() {
           <Route path="/AboutUs" element={<AboutUs />} />
           <Route path="/Shop" element={<Shop />} />
           <Route path="/Contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/Login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/Register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
