@@ -1310,7 +1310,11 @@ export default function Profile() {
             (profileLoading ? (
               <Typography>Loading account details...</Typography>
             ) : (
-              <AccountPanel profile={profile} onSave={handleSaveProfile} />
+              <AccountPanel
+                key={JSON.stringify(profile)}
+                profile={profile}
+                onSave={handleSaveProfile}
+              />
             ))}
 
           {tab === "orders" && <OrdersPanel />}
