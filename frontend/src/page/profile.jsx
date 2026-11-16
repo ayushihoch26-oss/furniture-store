@@ -212,14 +212,8 @@ function EmptyState({ Icon, title, text, to, button }) {
 
 /* ---------------------------- Account details ---------------------------- */
 function AccountPanel({ profile, onSave }) {
-  const [form, setForm] = useState(profile);
+  const [form, setForm] = useState(() => ({ ...profile }));
   const [errors, setErrors] = useState({});
-
-  // Update the form when real profile data loads.
-  useEffect(() => {
-    setForm({ ...profile });
-    setErrors({});
-  }, [profile]);
 
   const set = (name) => (e) => {
     setForm((previous) => ({
@@ -616,16 +610,8 @@ const EMPTY_ADDRESS = {
 function AddressDialog({ open, initial, onClose, onSave }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const [form, setForm] = useState(EMPTY_ADDRESS);
+  const [form, setForm] = useState(() => initial || EMPTY_ADDRESS);
   const [errors, setErrors] = useState({});
-
-  // Load the address being edited (or a blank one) each time the dialog opens
-  useEffect(() => {
-    if (open) {
-      setForm(initial || EMPTY_ADDRESS);
-      setErrors({});
-    }
-  }, [open, initial]);
 
   const set = (name) => (e) => {
     setForm((f) => ({ ...f, [name]: e.target.value }));
@@ -904,6 +890,7 @@ function AddressesPanel({ profile, onSave, onClear }) {
       )}
 
       <AddressDialog
+        key={`${dialog.open ? "open" : "closed"}-${JSON.stringify(dialog.initial || EMPTY_ADDRESS)}`}
         open={dialog.open}
         initial={dialog.initial}
         onClose={() => setDialog({ open: false, initial: null })}
