@@ -1,5 +1,0 @@
-MSSQL17.SQLEXPRESS/
-node_modules/
-.env
-dist/
-build/

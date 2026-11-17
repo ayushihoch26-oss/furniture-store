@@ -9,10 +9,10 @@ import Contact from "./page/Contactus";
 import Checkout from "./page/checkout";
 import Profile from "./page/profile";
 import CartPage from "./page/cart";
-import Login from "./page/Login";
-import Register from "./page/Register";
+import Login from "./page/auth/Login";
+import Register from "./page/auth/Register";
 import Wishlist from "./page/Wishlist";
-import ForgotPassword from "./page/Forgotpassword";
+import ForgotPassword from "./page/auth/Forgotpassword";
 import ResetPassword from "./page/resetpassword";
 
 //admin router
