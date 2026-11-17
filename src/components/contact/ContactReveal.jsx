@@ -1,15 +1,8 @@
-import { memo } from "react";
 import { Box } from "@mui/material";
 import { useInView } from "../../hooks/useInView";
 import { EASE, REVEAL_FROM } from "../../styles/contactStyles";
 
-const Reveal = memo(function Reveal({
-  children,
-  delay = 0,
-  direction = "up",
-  sx,
-  ...rest
-}) {
+export default function Reveal({ children, delay = 0, direction = "up" }) {
   const [ref, seen] = useInView();
 
   return (
@@ -19,13 +12,9 @@ const Reveal = memo(function Reveal({
         opacity: seen ? 1 : 0,
         transform: seen ? "none" : REVEAL_FROM[direction],
         transition: `opacity .7s ease ${delay}ms, transform .8s ${EASE} ${delay}ms`,
-        ...sx,
       }}
-      {...rest}
     >
       {children}
     </Box>
   );
-});
-
-export default Reveal;
+}

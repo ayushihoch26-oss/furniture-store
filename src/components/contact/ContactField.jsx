@@ -1,13 +1,17 @@
-import { memo } from "react";
 import { Box, TextField, Typography } from "@mui/material";
 import { BROWN } from "../../styles/contactStyles";
 
-// Reusable input field
-const Field = memo(function Field({
+export default function ContactField({
+  id,
+  name,
   label,
+  type,
+  placeholder,
+  value,
+  onChange,
+  disabled,
   error,
   multiline = false,
-  ...props
 }) {
   return (
     <Box
@@ -19,7 +23,7 @@ const Field = memo(function Field({
     >
       <Typography
         component="label"
-        htmlFor={props.id}
+        htmlFor={id}
         sx={{
           display: "block",
           fontSize: { xs: 14, lg: 16 },
@@ -34,7 +38,13 @@ const Field = memo(function Field({
       </Typography>
 
       <TextField
-        {...props}
+        id={id}
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
         fullWidth
         multiline={multiline}
         minRows={multiline ? 4 : undefined}
@@ -82,6 +92,4 @@ const Field = memo(function Field({
       />
     </Box>
   );
-});
-
-export default Field;
+}

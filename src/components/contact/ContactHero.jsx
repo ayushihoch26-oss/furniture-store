@@ -1,10 +1,8 @@
-import { memo } from "react";
 import { Box } from "@mui/material";
 import { HERO_BACKGROUND } from "../../features/contact/contactData";
 import { anim, HERO_HEIGHT } from "../../styles/contactStyles";
 
-// Hero section
-const Hero = memo(function Hero() {
+export default function ContactHero() {
   return (
     <Box
       sx={{
@@ -31,6 +29,4 @@ const Hero = memo(function Hero() {
       />
     </Box>
   );
-});
-
-export default Hero;
+}

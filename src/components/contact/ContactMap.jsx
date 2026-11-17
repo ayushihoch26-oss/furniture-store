@@ -1,12 +1,10 @@
-import { memo } from "react";
 import { Box } from "@mui/material";
 import { MAP_URL } from "../../features/contact/contactData";
 import { SIDE } from "../../styles/contactStyles";
 import useLazyMap from "../../hooks/contact/useLazyMap";
 import Reveal from "./ContactReveal";
 
-// Google Maps — the iframe src is added only near the viewport.
-const MapSection = memo(function MapSection() {
+export default function ContactMap() {
   const [mapRef, shouldLoadMap] = useLazyMap();
 
   return (
@@ -49,6 +47,4 @@ const MapSection = memo(function MapSection() {
       </Reveal>
     </Box>
   );
-});
-
-export default MapSection;
+}

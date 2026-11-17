@@ -1,12 +1,10 @@
-import { memo } from "react";
 import { Box } from "@mui/material";
 import { HERO_OVERLAP, SIDE } from "../../styles/contactStyles";
 import ContactForm from "./ContactForm";
 import ContactInfo from "./ContactInfo";
 import Reveal from "./ContactReveal";
 
-// Contact information and form layout
-const ContactCard = memo(function ContactCard() {
+export default function ContactCard() {
   return (
     <Box sx={{ position: "relative", px: SIDE, mt: HERO_OVERLAP }}>
       <Reveal delay={150}>
@@ -27,6 +25,4 @@ const ContactCard = memo(function ContactCard() {
       </Reveal>
     </Box>
   );
-});
-
-export default ContactCard;
+}

@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { sendContactMessage } from "../../service/contact.service";
@@ -7,15 +7,14 @@ import { BROWN } from "../../styles/contactStyles";
 import ContactField from "./ContactField";
 import Reveal from "./ContactReveal";
 
-// Contact form
-const ContactForm = memo(function ContactForm() {
+export default function ContactForm() {
   const [values, setValues] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  const handleChange = useCallback((event) => {
+  function handleChange(event) {
     const { name, value } = event.target;
 
     setValues((previous) => ({
@@ -30,58 +29,55 @@ const ContactForm = memo(function ContactForm() {
 
     setSent(false);
     setSubmitError("");
-  }, []);
+  }
 
-  const handleSubmit = useCallback(
-    async (event) => {
-      event.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
 
-      if (loading) return;
+    if (loading) return;
 
-      const newErrors = {};
+    const newErrors = {};
 
-      if (!values.name.trim()) {
-        newErrors.name = "Please enter your name";
-      }
+    if (!values.name.trim()) {
+      newErrors.name = "Please enter your name";
+    }
 
-      if (!/^\S+@\S+\.\S+$/.test(values.email.trim())) {
-        newErrors.email = "Please enter a valid email";
-      }
+    if (!/^\S+@\S+\.\S+$/.test(values.email.trim())) {
+      newErrors.email = "Please enter a valid email";
+    }
 
-      if (!values.message.trim()) {
-        newErrors.message = "Please enter a message";
-      }
+    if (!values.message.trim()) {
+      newErrors.message = "Please enter a message";
+    }
 
-      setErrors(newErrors);
-      setSent(false);
-      setSubmitError("");
+    setErrors(newErrors);
+    setSent(false);
+    setSubmitError("");
 
-      if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) return;
 
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        await sendContactMessage({
-          name: values.name,
-          email: values.email,
-          phone: values.phone,
-          message: values.message,
-        });
+    try {
+      await sendContactMessage({
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        message: values.message,
+      });
 
-        setSent(true);
-        setValues({ ...EMPTY_FORM });
-        setErrors({});
-      } catch (error) {
-        setSubmitError(
-          error.response?.data?.message ||
+      setSent(true);
+      setValues({ ...EMPTY_FORM });
+      setErrors({});
+    } catch (error) {
+      setSubmitError(
+        error.response?.data?.message ||
           "Unable to send your message. Please try again.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loading, values],
-  );
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <Box
@@ -261,6 +257,4 @@ const ContactForm = memo(function ContactForm() {
       </Reveal>
     </Box>
   );
-});
-
-export default ContactForm;
+}
