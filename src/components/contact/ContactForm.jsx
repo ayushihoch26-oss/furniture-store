@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+
 import { sendContactMessage } from "../../service/contact.service";
 import { EMPTY_FORM } from "../../features/contact/contactData";
 import { BROWN } from "../../styles/contactStyles";
@@ -8,74 +9,86 @@ import ContactField from "./ContactField";
 import Reveal from "./ContactReveal";
 
 export default function ContactForm() {
-  const [values, setValues] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState({});
+  const [messageSent, setMessageSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   function handleChange(event) {
-    const { name, value } = event.target;
+    const fieldName = event.target.name;
+    const fieldValue = event.target.value;
 
-    setValues((previous) => ({
-      ...previous,
-      [name]: value,
+    setFormValues((previousValues) => ({
+      ...previousValues,
+      [fieldName]: fieldValue,
     }));
 
-    setErrors((previous) => ({
-      ...previous,
-      [name]: "",
+    setFormErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
     }));
 
-    setSent(false);
+    setMessageSent(false);
     setSubmitError("");
+  }
+
+  function validateForm() {
+    const errors = {};
+
+    if (!formValues.name.trim()) {
+      errors.name = "Please enter your name";
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(formValues.email.trim())) {
+      errors.email = "Please enter a valid email";
+    }
+
+    if (!formValues.message.trim()) {
+      errors.message = "Please enter a message";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (loading) return;
-
-    const newErrors = {};
-
-    if (!values.name.trim()) {
-      newErrors.name = "Please enter your name";
+    if (isSending) {
+      return;
     }
 
-    if (!/^\S+@\S+\.\S+$/.test(values.email.trim())) {
-      newErrors.email = "Please enter a valid email";
-    }
-
-    if (!values.message.trim()) {
-      newErrors.message = "Please enter a message";
-    }
-
-    setErrors(newErrors);
-    setSent(false);
+    setMessageSent(false);
     setSubmitError("");
 
-    if (Object.keys(newErrors).length > 0) return;
+    const formIsValid = validateForm();
 
-    setLoading(true);
+    if (!formIsValid) {
+      return;
+    }
+
+    setIsSending(true);
 
     try {
       await sendContactMessage({
-        name: values.name,
-        email: values.email,
-        phone: values.phone,
-        message: values.message,
+        name: formValues.name,
+        email: formValues.email,
+        phone: formValues.phone,
+        message: formValues.message,
       });
 
-      setSent(true);
-      setValues({ ...EMPTY_FORM });
-      setErrors({});
+      setMessageSent(true);
+      setFormValues({ ...EMPTY_FORM });
+      setFormErrors({});
     } catch (error) {
-      setSubmitError(
+      const errorMessage =
         error.response?.data?.message ||
-          "Unable to send your message. Please try again.",
-      );
+        "Unable to send your message. Please try again.";
+
+      setSubmitError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsSending(false);
     }
   }
 
@@ -127,10 +140,10 @@ export default function ContactForm() {
             name="name"
             label="Name"
             placeholder="Your name..."
-            value={values.name}
+            value={formValues.name}
             onChange={handleChange}
-            error={errors.name}
-            disabled={loading}
+            error={formErrors.name}
+            disabled={isSending}
           />
         </Reveal>
 
@@ -141,9 +154,9 @@ export default function ContactForm() {
             label="Phone"
             type="tel"
             placeholder="Your phone number..."
-            value={values.phone}
+            value={formValues.phone}
             onChange={handleChange}
-            disabled={loading}
+            disabled={isSending}
           />
         </Reveal>
 
@@ -155,10 +168,10 @@ export default function ContactForm() {
               label="Email"
               type="email"
               placeholder="Your email address..."
-              value={values.email}
+              value={formValues.email}
               onChange={handleChange}
-              error={errors.email}
-              disabled={loading}
+              error={formErrors.email}
+              disabled={isSending}
             />
           </Reveal>
         </Box>
@@ -171,10 +184,10 @@ export default function ContactForm() {
               label="Message"
               multiline
               placeholder="Your message..."
-              value={values.message}
+              value={formValues.message}
               onChange={handleChange}
-              error={errors.message}
-              disabled={loading}
+              error={formErrors.message}
+              disabled={isSending}
             />
           </Reveal>
         </Box>
@@ -194,7 +207,7 @@ export default function ContactForm() {
             type="submit"
             variant="contained"
             disableElevation
-            disabled={loading}
+            disabled={isSending}
             sx={{
               width: { xs: "100%", sm: 200 },
               height: { xs: 46, lg: 50 },
@@ -220,10 +233,10 @@ export default function ContactForm() {
               },
             }}
           >
-            {loading ? "Sending..." : "Send message"}
+            {isSending ? "Sending..." : "Send message"}
           </Button>
 
-          {sent && (
+          {messageSent && (
             <Box
               role="status"
               sx={{

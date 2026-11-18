@@ -1,7 +1,6 @@
 import api from "../api/api";
 
-// Send Contact Us message to backend
-export const sendContactMessage = async ({ name, email, phone, message }) => {
+export async function sendContactMessage({ name, email, phone, message }) {
   const response = await api.post("/contactus", {
     name: name.trim(),
     email: email.trim().toLowerCase(),
@@ -10,8 +9,10 @@ export const sendContactMessage = async ({ name, email, phone, message }) => {
   });
 
   return response.data;
-};
+}
 
-export default {
+const contactService = {
   sendContactMessage,
 };
+
+export default contactService;

@@ -5,8 +5,10 @@ export const HERO_HEIGHT = { xs: 180, sm: 260, md: 360, lg: 486 };
 export const HERO_OVERLAP = { xs: "-70px", sm: "-90px", md: "-120px", lg: "-200px" };
 export const EASE = "cubic-bezier(.2,.7,.2,1)";
 
-export const anim = (name, delay = 0, duration = 800) =>
-  `${name} ${duration}ms ${EASE} ${delay}ms both`;
+export function anim(name, delay = 0, duration = 800) {
+  return `${name} ${duration}ms ${EASE} ${delay}ms both`;
+}
+
 export const ANIMATION_STYLES = {
   "@keyframes fs-fadeIn": {
     from: { opacity: 0 },

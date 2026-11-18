@@ -1,4 +1,8 @@
-import { Box, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { BROWN } from "../../styles/contactStyles";
 
 export default function ContactField({
@@ -13,12 +17,24 @@ export default function ContactField({
   error,
   multiline = false,
 }) {
+  const fieldSize = multiline
+    ? {
+        p: 0,
+        alignItems: "flex-start",
+        minHeight: { xs: 120, lg: 134 },
+      }
+    : {
+        height: { xs: 44, lg: 48 },
+      };
+
   return (
     <Box
       sx={{
         minWidth: 0,
         animation: error ? "fs-shake .4s ease" : "none",
-        "&:focus-within label": { color: BROWN },
+        "&:focus-within label": {
+          color: BROWN,
+        },
       }}
     >
       <Typography
@@ -57,23 +73,23 @@ export default function ContactField({
             fontSize: { xs: 14, lg: 16 },
             color: "var(--c-111111)",
             transition: "box-shadow .25s ease",
-            ...(multiline
-              ? {
-                p: 0,
-                alignItems: "flex-start",
-                minHeight: { xs: 120, lg: 134 },
-              }
-              : { height: { xs: 44, lg: 48 } }),
+            ...fieldSize,
             "& fieldset": {
               borderColor: "var(--c-e2e2e2)",
               transition: "border-color .25s ease",
             },
-            "&:hover fieldset": { borderColor: "#BDBDBD" },
+            "&:hover fieldset": {
+              borderColor: "#BDBDBD",
+            },
             "&.Mui-focused": {
               boxShadow: "0 0 0 3px rgba(148,116,88,.18)",
             },
-            "&.Mui-focused fieldset": { borderColor: BROWN },
-            "&.Mui-error fieldset": { borderColor: "#d32f2f" },
+            "&.Mui-focused fieldset": {
+              borderColor: BROWN,
+            },
+            "&.Mui-error fieldset": {
+              borderColor: "#d32f2f",
+            },
           },
           "& input": {
             px: "16px",
@@ -81,8 +97,14 @@ export default function ContactField({
             height: "100%",
             boxSizing: "border-box",
           },
-          "& textarea": { px: "16px", py: "14px" },
-          "& ::placeholder": { color: "#A8A8A8", opacity: 1 },
+          "& textarea": {
+            px: "16px",
+            py: "14px",
+          },
+          "& ::placeholder": {
+            color: "#A8A8A8",
+            opacity: 1,
+          },
           "& .MuiFormHelperText-root": {
             mx: 0,
             mt: "4px",

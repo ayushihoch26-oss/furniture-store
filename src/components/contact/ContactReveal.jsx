@@ -3,14 +3,14 @@ import { useInView } from "../../hooks/about/useInView";
 import { EASE, REVEAL_FROM } from "../../styles/contactStyles";
 
 export default function Reveal({ children, delay = 0, direction = "up" }) {
-  const [ref, seen] = useInView();
+  const [elementRef, isVisible] = useInView();
 
   return (
     <Box
-      ref={ref}
+      ref={elementRef}
       sx={{
-        opacity: seen ? 1 : 0,
-        transform: seen ? "none" : REVEAL_FROM[direction],
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "none" : REVEAL_FROM[direction],
         transition: `opacity .7s ease ${delay}ms, transform .8s ${EASE} ${delay}ms`,
       }}
     >
