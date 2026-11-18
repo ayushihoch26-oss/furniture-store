@@ -22,15 +22,21 @@ export const TABS = [
   { id: "security", label: "Password", Icon: LockOutlined },
 ];
 
-export const money = (value) =>
-  `$${Number(value || 0).toLocaleString(undefined, {
+export function money(value) {
+  const number = Number(value || 0);
+
+  return `$${number.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
 
-export const formatDate = (date) =>
-  new Date(date).toLocaleDateString(undefined, {
+export function formatDate(date) {
+  const dateObject = new Date(date);
+
+  return dateObject.toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
+}

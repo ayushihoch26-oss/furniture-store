@@ -22,85 +22,127 @@ import AccountPanel from "../../components/profile/AccountPanel";
 import OrdersPanel from "../../components/profile/OrdersPanel";
 import AddressesPanel from "../../components/profile/AddressesPanel";
 import SecurityPanel from "../../components/profile/SecurityPanel";
-import { brownBtn, outlineBtn } from "../../styles/profileStyles";
+import {
+  BROWN,
+  LIGHT_BG,
+  SIDE,
+  brownBtn,
+  outlineBtn,
+} from "../../styles/profileStyles";
 import { TABS, PROFILE_KEY } from "../../utils/profileUtils";
-import { BROWN, LIGHT_BG, SIDE } from "../../styles/profileStyles";
 
 const EMPTY_PROFILE = formatProfile();
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("account");
+
+  const [activeTab, setActiveTab] = useState("account");
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [toast, setToast] = useState({ open: false, msg: "" });
-  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [toast, setToast] = useState({
+    open: false,
+    msg: "",
+  });
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  const notify = (msg) => setToast({ open: true, msg });
   const initials =
     `${profile.firstName[0] || ""}${profile.lastName[0] || ""}`.toUpperCase() ||
     "U";
 
+  function showMessage(message) {
+    setToast({
+      open: true,
+      msg: message,
+    });
+  }
+
   useEffect(() => {
-    let active = true;
-    const loadProfile = async () => {
+    let isComponentActive = true;
+
+    async function loadProfile() {
       try {
         const user = await profileService.getMyProfile();
-        if (active) setProfile(formatProfile(user));
+
+        if (isComponentActive) {
+          setProfile(formatProfile(user));
+        }
       } catch (error) {
-        if (active) setToast({ open: true, msg: error.message || "Failed to load profile" });
+        if (isComponentActive) {
+          showMessage(error.message || "Failed to load profile");
+        }
       } finally {
-        if (active) setProfileLoading(false);
+        if (isComponentActive) {
+          setProfileLoading(false);
+        }
       }
-    };
+    }
+
     loadProfile();
-    return () => { active = false; };
+
+    return () => {
+      isComponentActive = false;
+    };
   }, []);
 
-  const handleLogout = () => {
-    setLogoutOpen(false);
+  function handleLogout() {
+    setLogoutDialogOpen(false);
     logoutUser();
     navigate("/Dashboard", { replace: true });
-  };
+  }
 
-  const handleSaveProfile = async (data) => {
+  async function saveProfile(profileData) {
     try {
-      const updated = await profileService.updateMyProfile(data);
-      setProfile(updated);
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
-      notify("Profile updated");
+      const updatedProfile =
+        await profileService.updateMyProfile(profileData);
+
+      setProfile(updatedProfile);
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(updatedProfile));
+      showMessage("Profile updated");
     } catch (error) {
-      notify(error.message || "Failed to update profile");
+      showMessage(error.message || "Failed to update profile");
     }
-  };
+  }
 
-  const handleSaveAddress = async (data) => {
+  async function saveAddress(addressData) {
     try {
-      const [firstName, ...rest] = String(data.fullName).trim().split(/\s+/);
-      const updated = await profileService.updateMyProfile({
+      const nameParts = String(addressData.fullName)
+        .trim()
+        .split(/\s+/);
+
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || profile.lastName;
+
+      const updatedProfile = await profileService.updateMyProfile({
         ...profile,
         firstName,
-        lastName: rest.join(" ") || profile.lastName,
-        phone: data.phone,
-        street: data.line1,
-        apartment: data.apartment || "",
-        city: data.city,
-        state: data.state,
-        zip: data.zip,
-        country: data.country,
+        lastName,
+        phone: addressData.phone,
+        street: addressData.line1,
+        apartment: addressData.apartment || "",
+        city: addressData.city,
+        state: addressData.state,
+        zip: addressData.zip,
+        country: addressData.country,
       });
-      setProfile(updated);
-      notify(profile.street ? "Address updated" : "Address added");
+
+      setProfile(updatedProfile);
+
+      if (profile.street) {
+        showMessage("Address updated");
+      } else {
+        showMessage("Address added");
+      }
+
       return true;
     } catch (error) {
-      notify(error.message || "Failed to save address");
+      showMessage(error.message || "Failed to save address");
       return false;
     }
-  };
+  }
 
-  const handleClearAddress = async () => {
+  async function removeAddress() {
     try {
-      const updated = await profileService.updateMyProfile({
+      const updatedProfile = await profileService.updateMyProfile({
         ...profile,
         street: "",
         apartment: "",
@@ -108,23 +150,65 @@ export default function ProfilePage() {
         state: "",
         zip: "",
       });
-      setProfile(updated);
-      notify("Address removed");
+
+      setProfile(updatedProfile);
+      showMessage("Address removed");
     } catch (error) {
-      notify(error.message || "Failed to remove address");
+      showMessage(error.message || "Failed to remove address");
     }
-  };
+  }
+
+  function selectTab(tabId) {
+    setActiveTab(tabId);
+  }
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", bgcolor: "var(--c-ffffff)" }}>
+    <Box
+      sx={{
+        width: "100%",
+        minHeight: "100vh",
+        bgcolor: "var(--c-ffffff)",
+      }}
+    >
       <Navbar />
 
-      <Box sx={{ bgcolor: LIGHT_BG, px: SIDE, py: { xs: 4, md: 5, lg: 7 } }}>
-        <Typography component="h1" sx={{ fontSize: { xs: 28, md: 34, lg: 40 }, fontWeight: 600, color: "var(--c-111111)", lineHeight: 1.2 }}>
+      <Box
+        sx={{
+          bgcolor: LIGHT_BG,
+          px: SIDE,
+          py: { xs: 4, md: 5, lg: 7 },
+        }}
+      >
+        <Typography
+          component="h1"
+          sx={{
+            fontSize: { xs: 28, md: 34, lg: 40 },
+            fontWeight: 600,
+            color: "var(--c-111111)",
+            lineHeight: 1.2,
+          }}
+        >
           My Account
         </Typography>
-        <Box sx={{ display: "flex", gap: 1, mt: 1, fontSize: { xs: 12, lg: 14 }, color: "var(--c-777777)" }}>
-          <Box component={Link} to="/Dashboard" sx={{ color: "inherit", textDecoration: "none", "&:hover": { color: BROWN } }}>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mt: 1,
+            fontSize: { xs: 12, lg: 14 },
+            color: "var(--c-777777)",
+          }}
+        >
+          <Box
+            component={Link}
+            to="/Dashboard"
+            sx={{
+              color: "inherit",
+              textDecoration: "none",
+              "&:hover": { color: BROWN },
+            }}
+          >
             Home
           </Box>
           /<Box sx={{ color: "var(--c-111111)" }}>My Account</Box>
@@ -136,54 +220,151 @@ export default function ProfilePage() {
           px: SIDE,
           py: { xs: 3, md: "48px", lg: "72px" },
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr)", lg: "320px minmax(0, 1fr)" },
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "260px minmax(0, 1fr)",
+            lg: "320px minmax(0, 1fr)",
+          },
           columnGap: { md: "32px", lg: "64px" },
           rowGap: 3,
           alignItems: "start",
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, bgcolor: LIGHT_BG, p: { xs: 2, lg: 3 }, mb: { xs: 2, md: 2.5 } }}>
-            <Box sx={{ width: { xs: 52, lg: 64 }, height: { xs: 52, lg: 64 }, borderRadius: "50%", bgcolor: BROWN, color: "#fff", display: "grid", placeItems: "center", fontSize: { xs: 18, lg: 22 }, fontWeight: 600, flexShrink: 0 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              bgcolor: LIGHT_BG,
+              p: { xs: 2, lg: 3 },
+              mb: { xs: 2, md: 2.5 },
+            }}
+          >
+            <Box
+              sx={{
+                width: { xs: 52, lg: 64 },
+                height: { xs: 52, lg: 64 },
+                borderRadius: "50%",
+                bgcolor: BROWN,
+                color: "#fff",
+                display: "grid",
+                placeItems: "center",
+                fontSize: { xs: 18, lg: 22 },
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
               {initials}
             </Box>
+
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: { xs: 16, lg: 18 }, fontWeight: 600 }} noWrap>
+              <Typography
+                sx={{ fontSize: { xs: 16, lg: 18 }, fontWeight: 600 }}
+                noWrap
+              >
                 {profile.firstName} {profile.lastName}
               </Typography>
-              <Typography sx={{ fontSize: 13, color: "var(--c-777777)" }} noWrap>
+              <Typography
+                sx={{ fontSize: 13, color: "var(--c-777777)" }}
+                noWrap
+              >
                 {profile.email}
               </Typography>
             </Box>
           </Box>
 
-          <Box sx={{ display: { xs: "flex", md: "none" }, gap: 1, overflowX: "auto", pb: 0.5, "&::-webkit-scrollbar": { display: "none" } }}>
-            {TABS.map(({ id, label }) => (
+          <Box
+            sx={{
+              display: { xs: "flex", md: "none" },
+              gap: 1,
+              overflowX: "auto",
+              pb: 0.5,
+              "&::-webkit-scrollbar": { display: "none" },
+            }}
+          >
+            {TABS.map((tab) => (
               <ButtonBase
-                key={id}
-                onClick={() => setTab(id)}
+                key={tab.id}
+                onClick={() => selectTab(tab.id)}
                 ref={(element) => {
-                  if (element && tab === id) element.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+                  if (element && activeTab === tab.id) {
+                    element.scrollIntoView({
+                      inline: "center",
+                      block: "nearest",
+                      behavior: "smooth",
+                    });
+                  }
                 }}
-                sx={{ flexShrink: 0, px: 2, height: 38, fontSize: 13.5, border: `1px solid ${tab === id ? BROWN : "var(--c-d9d4cf)"}`, bgcolor: tab === id ? BROWN : "var(--c-ffffff)", color: tab === id ? "#fff" : "var(--c-333333)" }}
+                sx={{
+                  flexShrink: 0,
+                  px: 2,
+                  height: 38,
+                  fontSize: 13.5,
+                  border: `1px solid ${
+                    activeTab === tab.id ? BROWN : "var(--c-d9d4cf)"
+                  }`,
+                  bgcolor: activeTab === tab.id ? BROWN : "var(--c-ffffff)",
+                  color:
+                    activeTab === tab.id ? "#fff" : "var(--c-333333)",
+                }}
               >
-                {label}
+                {tab.label}
               </ButtonBase>
             ))}
           </Box>
 
-          <Box sx={{ display: { xs: "none", md: "flex" }, flexDirection: "column", border: "1px solid var(--c-e5e0db)" }}>
-            {TABS.map(({ id, label, Icon }) => (
-              <ButtonBase
-                key={id}
-                onClick={() => setTab(id)}
-                sx={{ justifyContent: "flex-start", gap: 1.5, px: 2.5, py: { md: "13px", lg: "16px" }, fontSize: { md: 14, lg: 16 }, fontWeight: tab === id ? 600 : 400, color: tab === id ? BROWN : "var(--c-222222)", bgcolor: tab === id ? "var(--c-fbf8f5)" : "var(--c-ffffff)", borderLeft: `3px solid ${tab === id ? BROWN : "transparent"}`, borderBottom: "1px solid var(--c-eeeeee)", "&:hover": { bgcolor: "var(--c-fbf8f5)" } }}
-              >
-                <Icon sx={{ fontSize: 20 }} />
-                {label}
-              </ButtonBase>
-            ))}
-            <ButtonBase onClick={() => setLogoutOpen(true)} sx={{ justifyContent: "flex-start", gap: 1.5, px: 2.5, py: { md: "13px", lg: "16px" }, fontSize: { md: 14, lg: 16 }, color: "#c62828", borderLeft: "3px solid transparent", "&:hover": { bgcolor: "#FDECEA" } }}>
+          <Box
+            sx={{
+              display: { xs: "none", md: "flex" },
+              flexDirection: "column",
+              border: "1px solid var(--c-e5e0db)",
+            }}
+          >
+            {TABS.map((tab) => {
+              const isSelected = activeTab === tab.id;
+
+              return (
+                <ButtonBase
+                  key={tab.id}
+                  onClick={() => selectTab(tab.id)}
+                  sx={{
+                    justifyContent: "flex-start",
+                    gap: 1.5,
+                    px: 2.5,
+                    py: { md: "13px", lg: "16px" },
+                    fontSize: { md: 14, lg: 16 },
+                    fontWeight: isSelected ? 600 : 400,
+                    color: isSelected ? BROWN : "var(--c-222222)",
+                    bgcolor: isSelected
+                      ? "var(--c-fbf8f5)"
+                      : "var(--c-ffffff)",
+                    borderLeft: `3px solid ${
+                      isSelected ? BROWN : "transparent"
+                    }`,
+                    borderBottom: "1px solid var(--c-eeeeee)",
+                    "&:hover": { bgcolor: "var(--c-fbf8f5)" },
+                  }}
+                >
+                  <tab.Icon sx={{ fontSize: 20 }} />
+                  {tab.label}
+                </ButtonBase>
+              );
+            })}
+
+            <ButtonBase
+              onClick={() => setLogoutDialogOpen(true)}
+              sx={{
+                justifyContent: "flex-start",
+                gap: 1.5,
+                px: 2.5,
+                py: { md: "13px", lg: "16px" },
+                fontSize: { md: 14, lg: 16 },
+                color: "#c62828",
+                borderLeft: "3px solid transparent",
+                "&:hover": { bgcolor: "#FDECEA" },
+              }}
+            >
               <LogoutOutlined sx={{ fontSize: 20 }} />
               Log out
             </ButtonBase>
@@ -191,15 +372,39 @@ export default function ProfilePage() {
         </Box>
 
         <Box sx={{ minWidth: 0 }}>
-          {tab === "account" && (profileLoading ? (
-            <Typography>Loading account details...</Typography>
-          ) : (
-            <AccountPanel key={JSON.stringify(profile)} profile={profile} onSave={handleSaveProfile} />
-          ))}
-          {tab === "orders" && <OrdersPanel />}
-          {tab === "addresses" && <AddressesPanel profile={profile} onSave={handleSaveAddress} onClear={handleClearAddress} />}
-          {tab === "security" && <SecurityPanel notify={notify} />}
-          <Button startIcon={<LogoutOutlined />} onClick={() => setLogoutOpen(true)} sx={{ display: { xs: "inline-flex", md: "none" }, mt: 4, color: "#c62828", textTransform: "none" }}>
+          {activeTab === "account" &&
+            (profileLoading ? (
+              <Typography>Loading account details...</Typography>
+            ) : (
+              <AccountPanel
+                key={JSON.stringify(profile)}
+                profile={profile}
+                onSave={saveProfile}
+              />
+            ))}
+
+          {activeTab === "orders" && <OrdersPanel />}
+
+          {activeTab === "addresses" && (
+            <AddressesPanel
+              profile={profile}
+              onSave={saveAddress}
+              onClear={removeAddress}
+            />
+          )}
+
+          {activeTab === "security" && <SecurityPanel notify={showMessage} />}
+
+          <Button
+            startIcon={<LogoutOutlined />}
+            onClick={() => setLogoutDialogOpen(true)}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              mt: 4,
+              color: "#c62828",
+              textTransform: "none",
+            }}
+          >
             Log out
           </Button>
         </Box>
@@ -207,19 +412,55 @@ export default function ProfilePage() {
 
       <Footer />
 
-      <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)} PaperProps={{ sx: { borderRadius: 0 } }}>
+      <Dialog
+        open={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 0 } }}
+      >
         <DialogTitle sx={{ fontWeight: 600 }}>Log out?</DialogTitle>
+
         <DialogContent>
-          <Typography sx={{ fontSize: 14, color: "var(--c-555555)" }}>You will need to sign in again to see your account.</Typography>
+          <Typography sx={{ fontSize: 14, color: "var(--c-555555)" }}>
+            You will need to sign in again to see your account.
+          </Typography>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button onClick={() => setLogoutOpen(false)} variant="outlined" sx={outlineBtn}>Cancel</Button>
-          <Button onClick={handleLogout} sx={brownBtn}>Log out</Button>
+          <Button
+            onClick={() => setLogoutDialogOpen(false)}
+            variant="outlined"
+            sx={outlineBtn}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleLogout} sx={brownBtn}>
+            Log out
+          </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast((current) => ({ ...current, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
-        <Alert severity="success" variant="filled" onClose={() => setToast((current) => ({ ...current, open: false }))} sx={{ borderRadius: 0, bgcolor: BROWN }}>
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={2500}
+        onClose={() =>
+          setToast((currentToast) => ({
+            ...currentToast,
+            open: false,
+          }))
+        }
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() =>
+            setToast((currentToast) => ({
+              ...currentToast,
+              open: false,
+            }))
+          }
+          sx={{ borderRadius: 0, bgcolor: BROWN }}
+        >
           {toast.msg}
         </Alert>
       </Snackbar>
