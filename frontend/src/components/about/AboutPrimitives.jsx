@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from "react";
 import { Box, Button } from "@mui/material";
 import { prefersReducedMotion, BROWN, EASE, REVEAL_FROM } from "../../styles/aboutStyles";
-import { useInView } from "../../hooks/useInView";
+import { useInView } from "../../hooks/about/useInView";
 
 export const Photo = memo(function Photo({ img, alt = "", eager = false }) {
   const [source, setSource] = useState(() => img.src);

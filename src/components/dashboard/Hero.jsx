@@ -2,7 +2,7 @@ import { Box, Typography, Button } from "@mui/material";
 import { HERO_CARDS } from "../../features/dashboard/dashboardData";
 import { anim, money } from "../../utils/dashboardUtils";
 import { BROWN, zoomOnHover } from "../../styles/dashboardStyles";
-import { useProducts } from "../../hooks/useDashboardData";
+import { useProducts } from "../../hooks/dashboard/useDashboardData";
 
 // ---------- Hero ----------
 export function Hero() {

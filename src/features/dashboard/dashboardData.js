@@ -4,7 +4,7 @@ import icon2 from "../../assets/Logo (1).svg";
 import icon3 from "../../assets/Logo (2).svg";
 import icon4 from "../../assets/Logo (3).svg";
 
-// Map existing product images without changing furnitureImages.js.
+
 export const PRODUCT = {
   stool: PRODUCT_IMAGES[0],
   papasan: PRODUCT_IMAGES[1],

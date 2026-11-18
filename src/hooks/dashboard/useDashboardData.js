@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import shopService from "../service/shop.service";
-import { getWishlist, fetchWishlist } from "../service/wishlist.service";
-import { toCard } from "../utils/dashboardUtils";
+import shopService from "../../service/shop.service";
+import { getWishlist, fetchWishlist } from "../../service/wishlist.service";
+import { toCard } from "../../utils/dashboardUtils";
 
 // Categories with product counts: null while loading, [] when none / on error
 export function useCategories() {

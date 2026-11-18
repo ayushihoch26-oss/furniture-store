@@ -1,7 +1,7 @@
 import { Box, Skeleton, Typography } from "@mui/material";
 import { money, stagger } from "../../utils/dashboardUtils";
 import { EASE, SECTION_PY, SIDE, zoomOnHover } from "../../styles/dashboardStyles";
-import { useProducts } from "../../hooks/useDashboardData";
+import { useProducts } from "../../hooks/dashboard/useDashboardData";
 import { ColorDots } from "./ColorDots";
 import { Img } from "./Img";
 import { Reveal } from "./Reveal";

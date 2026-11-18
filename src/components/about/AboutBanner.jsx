@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { IMAGES } from "../../features/about/aboutData";
 import { EASE, GREY_BG, SIDE, heading } from "../../styles/aboutStyles";
-import { useInView } from "../../hooks/useInView";
+import { useInView } from "../../hooks/about/useInView";
 import { BrownButton, Photo, Reveal } from "./AboutPrimitives";
 
 export default function Banner() {

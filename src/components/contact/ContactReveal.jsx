@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { useInView } from "../../hooks/useInView";
+import { useInView } from "../../hooks/about/useInView";
 import { EASE, REVEAL_FROM } from "../../styles/contactStyles";
 
 export default function Reveal({ children, delay = 0, direction = "up" }) {

@@ -2,7 +2,7 @@ import { Person, Star } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
 import { U, ROOM } from "../../assets/furnitureImages";
 import { H2 } from "../../styles/dashboardStyles";
-import { useInView } from "../../hooks/useInView";
+import { useInView } from "../../hooks/about/useInView";
 import { Reveal } from "./Reveal";
 
 // ---------- Reviews ----------

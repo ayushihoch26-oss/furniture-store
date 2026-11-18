@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { EASE, REVEAL_FROM } from "../../styles/dashboardStyles";
-import { useInView } from "../../hooks/useInView";
+import { useInView } from "../../hooks/about/useInView";
 
 // Fades + slides its children in when they scroll into view
 export function Reveal({ children, delay = 0, direction = "up", sx, ...rest }) {

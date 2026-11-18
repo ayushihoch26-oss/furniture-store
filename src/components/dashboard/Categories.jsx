@@ -4,7 +4,7 @@ import { Box, Skeleton, Typography } from "@mui/material";
 import { categoryLook, MAX_CATEGORY_CARDS } from "../../features/dashboard/dashboardData";
 import { stagger } from "../../utils/dashboardUtils";
 import { BROWN, SECTION_PY, SIDE, zoomOnHover } from "../../styles/dashboardStyles";
-import { useCategories } from "../../hooks/useDashboardData";
+import { useCategories } from "../../hooks/dashboard/useDashboardData";
 import { Reveal } from "./Reveal";
 import { SectionHeader } from "./SectionHeader";
 

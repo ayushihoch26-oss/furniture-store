@@ -5,7 +5,7 @@ import { toggleWishlist } from "../../service/wishlist.service";
 import { MAX_TABS } from "../../features/dashboard/dashboardData";
 import { anim, money, stagger } from "../../utils/dashboardUtils";
 import { BROWN, H2, SECTION_PY, SIDE, zoomOnHover } from "../../styles/dashboardStyles";
-import { useCategories, useProducts, useWishedIds } from "../../hooks/useDashboardData";
+import { useCategories, useProducts, useWishedIds } from "../../hooks/dashboard/useDashboardData";
 import { ColorDots } from "./ColorDots";
 import { Img } from "./Img";
 import { Reveal } from "./Reveal";
