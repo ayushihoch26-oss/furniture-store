@@ -1,37 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 
-// Load the map only when it approaches the viewport.
-
 export default function useLazyMap() {
-  const ref = useRef(null);
+  const mapRef = useRef(null);
 
-  const [shouldLoad, setShouldLoad] = useState(
-    () => typeof IntersectionObserver === "undefined",
-  );
+  const [shouldLoadMap, setShouldLoadMap] = useState(function () {
+    return typeof IntersectionObserver === "undefined";
+  });
 
   useEffect(() => {
-    if (shouldLoad) return undefined;
+    if (shouldLoadMap) {
+      return;
+    }
 
-    const element = ref.current;
-    if (!element) return undefined;
+    const mapElement = mapRef.current;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setShouldLoad(true);
-          observer.disconnect();
-        }
-      },
-      {
-        rootMargin: "300px 0px",
-        threshold: 0,
-      },
-    );
+    if (!mapElement) {
+      return;
+    }
 
-    observer.observe(element);
+    const mapObserver = new IntersectionObserver(function (entries) {
+      const firstEntry = entries[0];
 
-    return () => observer.disconnect();
-  }, [shouldLoad]);
+      if (firstEntry.isIntersecting) {
+        setShouldLoadMap(true);
+        mapObserver.disconnect();
+      }
+    }, {
+      rootMargin: "300px 0px",
+      threshold: 0,
+    });
 
-  return [ref, shouldLoad];
+    mapObserver.observe(mapElement);
+
+    return function stopWatchingMap() {
+      mapObserver.disconnect();
+    };
+  }, [shouldLoadMap]);
+
+  return [mapRef, shouldLoadMap];
 }
