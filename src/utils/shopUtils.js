@@ -1,3 +1,5 @@
+import { FALLBACK } from "../assets/furnitureImages";
+
 const splitList = (value) =>
   String(value || "")
     .split(/[,/&]/)
@@ -16,7 +18,9 @@ export const normalizeProduct = (item) => {
   const category =
     typeof item.category === "object" ? item.category?.name : item.category;
 
-  const materials = splitList(item.details?.material).map(titleCase);
+  const materials = splitList(
+    item.details?.material ?? item.material,
+  ).map(titleCase);
 
   let badge = "";
   if (soldOut) badge = "SOLD OUT";
@@ -29,7 +33,7 @@ export const normalizeProduct = (item) => {
     name: item.name || "Unnamed product",
     price,
     oldPrice: onSale ? Number(item.price) : undefined,
-    img: item.image || "",
+    img: item.image || FALLBACK,
     cats: category ? [category] : [],
     materials,
     isSale: onSale,

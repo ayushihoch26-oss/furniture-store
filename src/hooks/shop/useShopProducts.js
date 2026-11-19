@@ -7,6 +7,11 @@ export function useShopFilters() {
   const [categories, setCategories] = useState([]);
   const [priceBounds, setPriceBounds] = useState([0, 0]);
   const [saleCount, setSaleCount] = useState(0);
+  const [colorOptions, setColorOptions] = useState([]);
+  const [materialOptions, setMaterialOptions] = useState([]);
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -34,9 +39,19 @@ export function useShopFilters() {
         ]);
 
         setSaleCount(Number(sale?.total) || 0);
+        setColorOptions(Array.isArray(filters?.colors) ? filters.colors : []);
+        setMaterialOptions(
+          Array.isArray(filters?.materials) ? filters.materials : [],
+        );
+        setBrandOptions(Array.isArray(filters?.brands) ? filters.brands : []);
       } catch (err) {
         if (!cancelled) {
           console.error("[Shop] could not load filters:", err.message);
+          setError("Could not load filter options.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
     }
@@ -48,7 +63,16 @@ export function useShopFilters() {
     };
   }, []);
 
-  return { categories, priceBounds, saleCount };
+  return {
+    categories,
+    priceBounds,
+    saleCount,
+    colorOptions,
+    materialOptions,
+    brandOptions,
+    loading,
+    error,
+  };
 }
 
 // Fetch newest products for the sidebar and featured section.

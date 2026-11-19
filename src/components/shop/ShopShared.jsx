@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Typography, Button, ButtonBase, Checkbox, Slider, Collapse } from "@mui/material";
 import { KeyboardArrowDown } from "@mui/icons-material";
-import { BROWN, GRAY_BG, SIDE, H2, FILTER_TITLE, OPTION_TEXT, ROW_PY, DOTS, CATEGORY_ICONS, FALLBACK_CATEGORY_ICON, scrollToProducts } from "../../features/shop/shopConstants";
+import { BROWN, SIDE, H2, FILTER_TITLE, OPTION_TEXT, ROW_PY, DOTS, CATEGORY_ICONS, FALLBACK_CATEGORY_ICON, scrollToProducts } from "../../features/shop/shopConstants";
 import { EASE } from "../../features/shop/shopMotionStyles";
 import { onImgError } from "../../assets/furnitureImages";
 import { Reveal } from "./ShopMotion";
@@ -339,74 +339,99 @@ export function Sidebar({
   categoryOptions,
   cats,
   toggleCat,
-  latest,
-  onDetail,
+  colorOptions = [],
+  colors = [],
+  toggleColor,
+  materialOptions = [],
+  materials = [],
+  toggleMaterial,
+  brandOptions = [],
+  brands = [],
+  toggleBrand,
+  visual = "",
+  setVisual,
+  filtersLoading,
+  filtersError,
+  bestSellers = [],
   collapsible = false,
 }) {
   const groupMb = { xs: "28px", md: "32px", lg: "44px" };
+  const visualOptions = ["Minimal", "Classic", "Modern"];
 
   return (
     <Box sx={{ width: "100%" }}>
-      {priceBounds[1] > priceBounds[0] && (
-        <FilterGroup
-          title="Filter by Price"
-          collapsible={collapsible}
-          defaultOpen
-          mb={groupMb}
-        >
-          <Slider
-            value={price}
-            min={priceBounds[0]}
-            max={priceBounds[1]}
-            onChange={(_, value) => setPrice(value)}
-            onChangeCommitted={(_, value) => commitPrice(value)}
-            disableSwap
-            sx={{
-              color: BROWN,
-              height: 3,
-              py: "10px",
-              display: "block",
-              width: "calc(100% - 16px)",
-              mx: "8px",
-              "& .MuiSlider-rail": { opacity: 1, bgcolor: BROWN },
-              "& .MuiSlider-track": { border: "none", bgcolor: BROWN },
-              "& .MuiSlider-thumb": {
-                width: { xs: 12, lg: 16 },
-                height: { xs: 12, lg: 16 },
-                bgcolor: "var(--c-ffffff)",
-                border: `2px solid ${BROWN}`,
-                boxShadow: "none",
-                transition: "transform .2s ease, box-shadow .2s ease",
-                "&:hover, &.Mui-focusVisible, &.Mui-active": {
-                  transform: "translate(-50%, -50%) scale(1.3)",
-                  boxShadow: "0 0 0 6px rgba(148,116,88,.18)",
+      <FilterGroup
+        title="Filter by Price"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        {filtersLoading ? (
+          <Typography sx={OPTION_TEXT}>Loading price range...</Typography>
+        ) : filtersError ? (
+          <Typography sx={OPTION_TEXT}>{filtersError}</Typography>
+        ) : priceBounds[1] > priceBounds[0] ? (
+          <>
+            <Slider
+              value={price}
+              min={priceBounds[0]}
+              max={priceBounds[1]}
+              onChange={(_, value) => setPrice(value)}
+              onChangeCommitted={(_, value) => commitPrice(value)}
+              disableSwap
+              sx={{
+                color: BROWN,
+                height: 3,
+                py: "10px",
+                display: "block",
+                width: "calc(100% - 16px)",
+                mx: "8px",
+                "& .MuiSlider-rail": { opacity: 1, bgcolor: BROWN },
+                "& .MuiSlider-track": { border: "none", bgcolor: BROWN },
+                "& .MuiSlider-thumb": {
+                  width: { xs: 12, lg: 16 },
+                  height: { xs: 12, lg: 16 },
+                  bgcolor: "var(--c-ffffff)",
+                  border: `2px solid ${BROWN}`,
+                  boxShadow: "none",
+                  transition: "transform .2s ease, box-shadow .2s ease",
+                  "&:hover, &.Mui-focusVisible, &.Mui-active": {
+                    transform: "translate(-50%, -50%) scale(1.3)",
+                    boxShadow: "0 0 0 6px rgba(148,116,88,.18)",
+                  },
                 },
-              },
-            }}
-          />
-          <Typography
-            sx={{
-              fontSize: { xs: 13, md: 14, lg: 16 },
-              color: "var(--c-777777)",
-              mt: "8px",
-            }}
-          >
-            Price:{" "}
-            <b style={{ color: "var(--c-111111)", fontWeight: 600 }}>
-              ${price[0]} - ${price[1]}
-            </b>
-          </Typography>
-        </FilterGroup>
-      )}
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: { xs: 13, md: 14, lg: 16 },
+                color: "var(--c-777777)",
+                mt: "8px",
+              }}
+            >
+              Price:{" "}
+              <b style={{ color: "var(--c-111111)", fontWeight: 600 }}>
+                ${price[0]} - ${price[1]}
+              </b>
+            </Typography>
+          </>
+        ) : (
+          <Typography sx={OPTION_TEXT}>No price range available.</Typography>
+        )}
+      </FilterGroup>
 
-      {categoryOptions.length > 0 && (
-        <FilterGroup
-          title="Filter by Categories"
-          collapsible={collapsible}
-          defaultOpen
-          mb={groupMb}
-        >
-          {categoryOptions.map(({ name, count }) => (
+      <FilterGroup
+        title="Filter by Categories"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        {filtersLoading ? (
+          <Typography sx={OPTION_TEXT}>Loading categories...</Typography>
+        ) : filtersError ? (
+          <Typography sx={OPTION_TEXT}>{filtersError}</Typography>
+        ) : categoryOptions.length > 0 ? (
+          categoryOptions.map(({ name, count }) => (
             <CheckRow
               key={name}
               label={name}
@@ -414,72 +439,164 @@ export function Sidebar({
               checked={cats.includes(name)}
               onChange={() => toggleCat(name)}
             />
-          ))}
-        </FilterGroup>
-      )}
+          ))
+        ) : (
+          <Typography sx={OPTION_TEXT}>No categories available.</Typography>
+        )}
+      </FilterGroup>
 
-      {latest.length > 0 && (
-        <FilterGroup title="Latest Products" collapsible={collapsible}>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: { xs: "10px", lg: "12px" },
-            }}
-          >
-            {latest.map((item) => (
-              <ButtonBase
-                key={item.id}
-                onClick={() => onDetail(item)}
-                disableRipple
+      <FilterGroup
+        title="Filter by Color"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        {colorOptions.length > 0 ? colorOptions.map((name) => (
+          <CheckRow
+            key={name}
+            label={name}
+            count={0}
+            checked={colors.includes(name)}
+            onChange={() => toggleColor(name)}
+          />
+        )) : (
+          <Typography sx={OPTION_TEXT}>No colors available.</Typography>
+        )}
+      </FilterGroup>
+
+      <FilterGroup
+        title="Filter by Material"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        {materialOptions.length > 0 ? materialOptions.map((name) => (
+          <CheckRow
+            key={name}
+            label={name}
+            count={0}
+            checked={materials.includes(name)}
+            onChange={() => toggleMaterial(name)}
+          />
+        )) : (
+          <Typography sx={OPTION_TEXT}>No materials available.</Typography>
+        )}
+      </FilterGroup>
+
+      <FilterGroup
+        title="Filter by Brand"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        {brandOptions.length > 0 ? brandOptions.map((name) => (
+          <CheckRow
+            key={name}
+            label={name}
+            count={0}
+            checked={brands.includes(name)}
+            onChange={() => toggleBrand(name)}
+          />
+        )) : (
+          <Typography sx={OPTION_TEXT}>No brands available.</Typography>
+        )}
+      </FilterGroup>
+
+      <FilterGroup
+        title="Visual"
+        collapsible={collapsible}
+        defaultOpen
+        mb={groupMb}
+      >
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          {visualOptions.map((name) => (
+            <Button
+              key={name}
+              onClick={() => setVisual((current) => (current === name ? "" : name))}
+              variant="outlined"
+              disableRipple
+              sx={{
+                minWidth: "auto",
+                height: { xs: 30, lg: 34 },
+                px: { xs: "10px", lg: "12px" },
+                borderRadius: 0,
+                borderColor:
+                  visual === name ? BROWN : "var(--c-d8d8d8)",
+                bgcolor:
+                  visual === name ? BROWN : "var(--c-ffffff)",
+                color:
+                  visual === name ? "#fff" : "var(--c-777777)",
+                fontSize: { xs: 10, lg: 12 },
+                fontWeight: 400,
+                textTransform: "none",
+                "&:hover": {
+                  borderColor: BROWN,
+                  bgcolor: visual === name ? BROWN : "var(--c-f8f8f8)",
+                },
+              }}
+            >
+              {name}
+            </Button>
+          ))}
+        </Box>
+      </FilterGroup>
+
+      {bestSellers.length > 0 && (
+        <FilterGroup
+          title="Best Sellers"
+          collapsible={collapsible}
+          defaultOpen
+          mb={0}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {bestSellers.slice(0, 3).map((product) => (
+              <Box
+                key={product.id}
                 sx={{
-                  display: "flex",
+                  display: "grid",
+                  gridTemplateColumns: "62px minmax(0, 1fr)",
                   alignItems: "center",
-                  justifyContent: "flex-start",
-                  textAlign: "left",
-                  gap: { xs: "10px", lg: "14px" },
-                  transition: "transform .3s ease",
-                  "&:hover": { transform: "translateX(4px)" },
-                  "&:hover img": { transform: "scale(1.1)" },
-                  "&:hover .fs-latest-name": { color: BROWN },
+                  gap: "10px",
+                  minHeight: 62,
                 }}
               >
                 <Box
                   sx={{
                     position: "relative",
-                    width: { xs: 64, lg: 80 },
-                    aspectRatio: "1 / 1",
-                    flexShrink: 0,
-                    bgcolor: GRAY_BG,
+                    width: 62,
+                    height: 62,
+                    bgcolor: "var(--c-f5f5f5)",
                     overflow: "hidden",
                   }}
                 >
-                  <ProductImage src={item.img} alt={item.name} pad="6%" />
+                  <ProductImage src={product.img} alt={product.name} pad="5%" />
                 </Box>
-                <Box>
+                <Box sx={{ minWidth: 0 }}>
                   <Typography
-                    className="fs-latest-name"
                     sx={{
-                      fontSize: { xs: 12, lg: 14 },
-                      color: "var(--c-111111)",
-                      lineHeight: 1.4,
-                      transition: "color .25s ease",
+                      fontSize: { xs: 12, lg: 13 },
+                      fontWeight: 600,
+                      color: "var(--c-222222)",
+                      lineHeight: 1.25,
+                      mb: "5px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    {item.name}
+                    {product.name}
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: { xs: 12, lg: 14 },
-                      fontWeight: 700,
-                      color: "var(--c-111111)",
-                      lineHeight: 1.4,
+                      fontSize: { xs: 12, lg: 13 },
+                      fontWeight: 500,
+                      color: "var(--c-777777)",
                     }}
                   >
-                    ${item.price}
+                    ${Number(product.price).toLocaleString()}
                   </Typography>
                 </Box>
-              </ButtonBase>
+              </Box>
             ))}
           </Box>
         </FilterGroup>

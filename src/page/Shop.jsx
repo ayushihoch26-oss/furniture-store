@@ -15,7 +15,6 @@ const Footer = lazy(() => import("../components/common/Footer"));
 
 export default function Shop() {
   const extras = useShopExtras();
-  const latest = extras.slice(0, 4);
 
   const [selected, setSelected] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -95,7 +94,7 @@ export default function Shop() {
 
       <Navbar />
 
-      <ShopMain latest={latest} onDetail={openDetail} />
+      <ShopMain onDetail={openDetail} extras={extras} />
 
       <Services />
 

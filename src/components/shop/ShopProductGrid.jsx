@@ -18,10 +18,28 @@ export function ProductCard({ product, onDetail }) {
           aspectRatio: "306 / 350",
           mb: 1.5,
           bgcolor: GRAY_BG,
+          overflow: "hidden",
+          "&:hover .shop-product-image": {
+            filter: "blur(3px)",
+            transform: "scale(1.04)",
+          },
+          "&:hover .shop-view-button": {
+            opacity: 1,
+            pointerEvents: "auto",
+            transform: "translate(-50%, -50%)",
+          },
+          "@media (hover: none)": {
+            "& .shop-view-button": {
+              opacity: 1,
+              pointerEvents: "auto",
+              transform: "translate(-50%, -50%)",
+            },
+          },
         }}
       >
         <Box
           component="img"
+          className="shop-product-image"
           src={product.img}
           alt={product.name}
           onError={onImgError}
@@ -32,8 +50,32 @@ export function ProductCard({ product, onDetail }) {
             objectFit: "contain",
             p: 2,
             opacity: product.soldOut ? 0.55 : 1,
+            transition: "filter 0.3s ease, transform 0.3s ease",
           }}
         />
+
+        <Button
+          className="shop-view-button"
+          onClick={() => onDetail(product)}
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            opacity: 0,
+            pointerEvents: "none",
+            transform: "translate(-50%, -40%)",
+            transition: "opacity 0.25s ease, transform 0.25s ease",
+            zIndex: 2,
+            borderRadius: 0,
+            bgcolor: "#fff",
+            color: "#111",
+            textTransform: "none",
+            whiteSpace: "nowrap",
+            "&:hover": { bgcolor: BROWN, color: "#fff" },
+          }}
+        >
+          View details
+        </Button>
 
         {product.badge && (
           <Typography
@@ -46,27 +88,13 @@ export function ProductCard({ product, onDetail }) {
               color: "#fff",
               bgcolor: BADGE_COLORS[product.badge] || "#1a1a1a",
               fontSize: 13,
+              zIndex: 1,
             }}
           >
             {product.badge}
           </Typography>
         )}
       </Box>
-
-      <Button
-        fullWidth
-        onClick={() => onDetail(product)}
-        sx={{
-          mb: 1,
-          borderRadius: 0,
-          bgcolor: BROWN,
-          color: "#fff",
-          textTransform: "none",
-          "&:hover": { bgcolor: "#7d6048" },
-        }}
-      >
-        View details
-      </Button>
 
       <Typography sx={{ fontWeight: 600, color: "var(--c-111111)" }}>
         {product.name}

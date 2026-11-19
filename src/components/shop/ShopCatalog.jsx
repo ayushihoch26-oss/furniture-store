@@ -9,10 +9,29 @@ import { ProductCard, ProductSkeletons, Pagination } from "./ShopProductGrid";
 import { Reveal } from "./ShopMotion";
 import { stagger } from "../../features/shop/shopMotionStyles";
 
-export default function ShopMain({ latest, onDetail }) {
-  const { categories, priceBounds, saleCount } = useShopFilters();
+const splitFilterValue = (value) =>
+  String(value || "")
+    .split(/[,/&]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+export default function ShopMain({ onDetail, extras = [] }) {
+  const {
+    categories,
+    priceBounds,
+    saleCount,
+    colorOptions,
+    materialOptions,
+    brandOptions,
+    loading: filtersLoading,
+    error: filtersError,
+  } = useShopFilters();
   const [price, setPrice] = useState([0, 0]);
   const [priceRange, setPriceRange] = useState(null);
+  const [colors, setColors] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [visual, setVisual] = useState("");
   const [searchParams] = useSearchParams();
 
   const urlSearch = searchParams.get("search") || "";
@@ -70,8 +89,8 @@ export default function ShopMain({ latest, onDetail }) {
   // Keep the request options stable so the products hook fetches only on filter changes.
   const query = useMemo(
     () => ({
-      page,
-      limit: PAGE_SIZE,
+      page: 1,
+      limit: 100,
       sort,
       search: search || undefined,
       categories: cats.filter((category) => category !== SALE),
@@ -79,34 +98,91 @@ export default function ShopMain({ latest, onDetail }) {
       minPrice: priceRange ? priceRange[0] : undefined,
       maxPrice: priceRange ? priceRange[1] : undefined,
     }),
-    [page, sort, search, cats, priceRange],
+    [sort, search, cats, priceRange],
   );
 
   const {
     products: visible,
-    total,
-    totalPages: pages,
     loading,
     error: loadError,
   } = useProductPage(query);
 
+  const filteredVisible = useMemo(() => {
+    return visible.filter((product) => {
+      const productColors = splitFilterValue(
+        product.color ?? product.colors,
+      );
+      const productMaterials = product.materials?.length
+        ? product.materials
+        : splitFilterValue(product.material);
+      const productBrands = splitFilterValue(product.brand);
+      const searchable = [
+        product.name,
+        product.description,
+        product.category,
+        ...(product.cats || []),
+      ].join(" ").toLowerCase();
+
+      return (
+        (!colors.length ||
+          colors.some((value) =>
+            productColors.some(
+              (item) => item.toLowerCase() === value.toLowerCase(),
+            ),
+          )) &&
+        (!materials.length ||
+          materials.some((value) =>
+            productMaterials.some(
+              (item) => item.toLowerCase() === value.toLowerCase(),
+            ),
+          )) &&
+        (!brands.length ||
+          brands.some((value) =>
+            productBrands.some(
+              (item) => item.toLowerCase() === value.toLowerCase(),
+            ),
+          )) &&
+        (!visual ||
+          searchable.includes(visual.toLowerCase()))
+      );
+    });
+  }, [visible, colors, materials, brands, visual]);
+
+  const filteredPages = Math.ceil(filteredVisible.length / PAGE_SIZE);
+  const pages = filteredPages;
+  const total = filteredVisible.length;
+  const pagedVisible = filteredVisible.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
+
   useEffect(() => {
-    if (!loading && pages > 0 && page > pages) {
+    if (!loading && filteredPages > 0 && page > filteredPages) {
       // eslint-disable-next-line
-      setPage(pages);
+      setPage(filteredPages);
     }
-  }, [loading, pages, page]);
+  }, [loading, filteredPages, page]);
 
-  const start = (page - 1) * PAGE_SIZE;
+  const start = filteredVisible.length
+    ? (page - 1) * PAGE_SIZE
+    : 0;
 
-  const gridKey = `${page}|${sort}|${cats.join(",")}|${search}|${priceRange ? priceRange.join("-") : ""
-    }`;
+  const gridKey = `${page}|${sort}|${cats.join(",")}|${search}|${priceRange ? priceRange.join("-") : ""}|${colors.join(",")}|${materials.join(",")}|${brands.join(",")}|${visual}`;
 
   function toggleCat(value) {
     setCats((previous) =>
       previous.includes(value)
         ? previous.filter((item) => item !== value)
         : [...previous, value],
+    );
+    setPage(1);
+  }
+
+  function toggleValue(value, selected, setSelected) {
+    setSelected(
+      selected.includes(value)
+        ? selected.filter((item) => item !== value)
+        : [...selected, value],
     );
     setPage(1);
   }
@@ -124,12 +200,23 @@ export default function ShopMain({ latest, onDetail }) {
     scrollToProducts();
   }
 
-  const activeFilters = cats.length + (priceRange ? 1 : 0) + (search ? 1 : 0);
+  const activeFilters =
+    cats.length +
+    colors.length +
+    materials.length +
+    brands.length +
+    (visual ? 1 : 0) +
+    (priceRange ? 1 : 0) +
+    (search ? 1 : 0);
 
   function clearAll() {
     setPrice(priceBounds);
     setPriceRange(null);
     setCats([]);
+    setColors([]);
+    setMaterials([]);
+    setBrands([]);
+    setVisual("");
     setSearchInput("");
     setSearch("");
     setPage(1);
@@ -150,8 +237,25 @@ export default function ShopMain({ latest, onDetail }) {
       categoryOptions={categoryOptions}
       cats={cats}
       toggleCat={toggleCat}
-      latest={latest}
-      onDetail={onDetail}
+      colorOptions={colorOptions}
+      colors={colors}
+      toggleColor={(value) => toggleValue(value, colors, setColors)}
+      materialOptions={materialOptions}
+      materials={materials}
+      toggleMaterial={(value) => toggleValue(value, materials, setMaterials)}
+      brandOptions={brandOptions}
+      brands={brands}
+      toggleBrand={(value) => toggleValue(value, brands, setBrands)}
+      visual={visual}
+      setVisual={(value) => {
+        setVisual(value);
+        setPage(1);
+      }}
+      filtersLoading={filtersLoading}
+      filtersError={filtersError}
+      searchInput={searchInput}
+      setSearchInput={setSearchInput}
+      bestSellers={extras}
       collapsible={collapsible}
     />
   );
@@ -162,7 +266,7 @@ export default function ShopMain({ latest, onDetail }) {
       ? "Products unavailable"
       : total === 0
         ? "No results found"
-        : `Showing ${start + 1}-${start + visible.length} of ${total} results`;
+        : `Showing ${start + 1}-${Math.min(start + pagedVisible.length, total)} of ${total} results`;
 
   return (
     <>
@@ -315,7 +419,7 @@ export default function ShopMain({ latest, onDetail }) {
                 {loadError}
               </Typography>
             </Box>
-          ) : visible.length > 0 ? (
+          ) : pagedVisible.length > 0 ? (
             <Box
               key={gridKey}
               sx={{
@@ -328,7 +432,7 @@ export default function ShopMain({ latest, onDetail }) {
                 rowGap: { xs: 3, md: "20px", lg: "34px" },
               }}
             >
-              {visible.map((product, index) => (
+              {pagedVisible.map((product, index) => (
                 <Reveal key={product.id} delay={stagger(index % 3, 110)}>
                   <ProductCard product={product} onDetail={onDetail} />
                 </Reveal>

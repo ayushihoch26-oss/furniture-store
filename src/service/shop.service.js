@@ -171,7 +171,7 @@ const shopService = {
     log("POST", `${BASE}/category/options`);
 
     const promise = api
-      .post(`${BASE}/category/options`)
+      .post("/categories/category/options")
       .then((response) => {
         const list = response.data?.data ?? response.data;
         return Array.isArray(list) ? list : [];
