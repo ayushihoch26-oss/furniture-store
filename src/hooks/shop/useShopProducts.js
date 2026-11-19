@@ -1,0 +1,189 @@
+import { useEffect, useState } from "react";
+import shopService from "../../service/shop.service";
+import { PAGE_SIZE } from "../../features/shop/shopConstants";
+import { normalizeProduct, errorMessage } from "../../utils/shopUtils";
+
+export function useShopFilters() {
+  const [categories, setCategories] = useState([]);
+  const [priceBounds, setPriceBounds] = useState([0, 0]);
+  const [saleCount, setSaleCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFilters() {
+      try {
+        const [filters, sale, categoryList] = await Promise.all([
+          shopService.getFilters(),
+          shopService.getProducts({ onSale: true, limit: 1 }),
+          shopService.getCategories(),
+        ]);
+
+        if (cancelled) return;
+
+        setCategories(
+          categoryList.map((category) => ({
+            name: category.name,
+            count: Number(category.count) || 0,
+          })),
+        );
+
+        setPriceBounds([
+          Math.floor(Number(filters?.price?.min) || 0),
+          Math.ceil(Number(filters?.price?.max) || 0),
+        ]);
+
+        setSaleCount(Number(sale?.total) || 0);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[Shop] could not load filters:", err.message);
+        }
+      }
+    }
+
+    loadFilters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { categories, priceBounds, saleCount };
+}
+
+// Fetch newest products for the sidebar and featured section.
+export function useShopExtras() {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadExtras() {
+      try {
+        const data = await shopService.getProducts({
+          sort: "latest",
+          page: 1,
+          limit: 12,
+        });
+
+        if (!cancelled) {
+          setItems((data?.products || []).map(normalizeProduct));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[Shop] could not load latest products:", err.message);
+        }
+      }
+    }
+
+    loadExtras();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return items;
+}
+
+// Fetch a page, cancel outdated requests, and prefetch the next page.
+
+export function useProductPage(query) {
+  const [data, setData] = useState({
+    products: [],
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const queryKey = JSON.stringify(query);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    const params = JSON.parse(queryKey);
+
+    async function fetchProducts() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await shopService.getProducts(params, {
+          signal: controller.signal,
+        });
+
+        if (!active) return;
+
+        // Support common API response shapes.
+        const result = response?.data ?? response;
+        const payload = result?.data ?? result;
+
+        const products = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.products)
+            ? payload.products
+            : Array.isArray(payload?.rows)
+              ? payload.rows
+              : [];
+
+        const total =
+          Number(
+            payload?.total ??
+            payload?.count ??
+            result?.total ??
+            products.length,
+          ) || 0;
+
+        const totalPages =
+          Number(
+            payload?.totalPages ??
+            payload?.pages ??
+            result?.totalPages ??
+            Math.ceil(total / PAGE_SIZE),
+          ) || 0;
+
+        setData({
+          products: products.map(normalizeProduct),
+          total,
+          totalPages,
+        });
+      } catch (err) {
+        if (
+          !active ||
+          controller.signal.aborted ||
+          err?.name === "AbortError" ||
+          err?.code === "ERR_CANCELED"
+        ) {
+          return;
+        }
+
+        console.error("[Shop] Product fetch failed:", err);
+
+        setData({
+          products: [],
+          total: 0,
+          totalPages: 0,
+        });
+
+        setError(errorMessage(err));
+      } finally {
+        if (active && !controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchProducts();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [queryKey]);
+
+  return { ...data, loading, error };
+}
+
+// ---------------------------------------------------------------------------
