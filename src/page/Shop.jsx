@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Box, Badge, Fab, Snackbar, Alert, GlobalStyles } from "@mui/material";
 import { ShoppingBagOutlined } from "@mui/icons-material";
 import { Link } from "react-router-dom";
@@ -8,19 +8,20 @@ import ShopMain from "../components/shop/ShopCatalog";
 import { Services, Featured } from "../components/shop/ShopSections";
 import { LazySection } from "../components/shop/ShopMotion";
 import { useShopExtras } from "../hooks/shop/useShopProducts";
-import { BROWN, log } from "../features/shop/shopConstants";
+import { BROWN } from "../features/shop/shopConstants";
 import { EASE, ANIMATION_STYLES } from "../features/shop/shopMotionStyles";
 
 const Footer = lazy(() => import("../components/common/Footer"));
 
 export default function Shop() {
   const extras = useShopExtras();
-  const latest = useMemo(() => extras.slice(0, 4), [extras]);
+  const latest = extras.slice(0, 4);
 
   const [selected, setSelected] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
+  // Restore the cart when the page loads.
   const [cart, setCart] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("furniture_cart")) || [];
@@ -29,6 +30,7 @@ export default function Shop() {
     }
   });
 
+  // Save cart changes so they survive a page refresh.
   useEffect(() => {
     try {
       localStorage.setItem("furniture_cart", JSON.stringify(cart));
@@ -37,23 +39,18 @@ export default function Shop() {
     }
   }, [cart]);
 
-  const openDetail = useCallback((product) => {
-    log("open product:", product.id, product.name);
+  function openDetail(product) {
     setSelected(product);
     setModalOpen(true);
-  }, []);
+  }
 
-  const closeModal = useCallback(() => {
-    setModalOpen(false);
-  }, []);
-
-  const addToCart = useCallback((product, color, qty) => {
+  function addToCart(product, color, qty) {
     const key = `${product.id}-${color}`;
-    log("add to cart:", product.id, color, qty);
 
     setCart((previous) => {
       const exists = previous.find((item) => item.key === key);
 
+      // If the same product and color are already in the cart, update its quantity.
       if (exists) {
         return previous.map((item) =>
           item.key === key ? { ...item, qty: item.qty + qty } : item,
@@ -76,16 +73,13 @@ export default function Shop() {
 
     setModalOpen(false);
     setSnackbarOpen(true);
-  }, []);
+  }
 
-  const closeSnackbar = useCallback(() => {
+  function closeSnackbar() {
     setSnackbarOpen(false);
-  }, []);
+  }
 
-  const cartCount = useMemo(
-    () => cart.reduce((total, item) => total + item.qty, 0),
-    [cart],
-  );
+  const cartCount = cart.reduce((total, item) => total + item.qty, 0);
 
   return (
     <Box
@@ -120,7 +114,7 @@ export default function Shop() {
       <ProductModal
         product={selected}
         open={modalOpen}
-        onClose={closeModal}
+        onClose={() => setModalOpen(false)}
         onAddToCart={addToCart}
       />
 

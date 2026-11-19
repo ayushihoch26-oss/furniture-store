@@ -83,8 +83,6 @@ export const SORTS = [
   { value: "name_asc", label: "Name: A to Z" },
 ];
 
-export const log = () => { };
-
 export const scrollToProducts = () =>
   document
     .getElementById("shop-products")

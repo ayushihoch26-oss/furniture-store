@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import { FavoriteBorder, Favorite } from "@mui/icons-material";
 import { BROWN, GRAY_BG, SIDE, SECTION_PY, SERVICES } from "../../features/shop/shopConstants";
@@ -77,28 +77,24 @@ export function Services() {
 // Featured products
 // ---------------------------------------------------------------------------
 export function Featured({ products, onDetail }) {
-  const [wishlistVersion, setWishlistVersion] = useState(0);
-  const wishedIds = useMemo(
-    () => getWishlist().map((item) => String(item.id)),
-    // eslint-disable-next-line
-    [wishlistVersion],
+  const [wishedIds, setWishedIds] = useState(() =>
+    getWishlist().map((item) => String(item.id)),
   );
 
-  const featured = useMemo(() => {
-    const highlighted = products.filter(
-      (product) => product.isSale || product.isNew,
-    );
-    const highlightedIds = new Set(highlighted.map((product) => product.id));
-    const rest = products.filter((product) => !highlightedIds.has(product.id));
+  const highlighted = products.filter(
+    (product) => product.isSale || product.isNew,
+  );
+  const highlightedIds = highlighted.map((product) => product.id);
+  const remainingProducts = products.filter(
+    (product) => !highlightedIds.includes(product.id),
+  );
+  const featured = [...highlighted, ...remainingProducts].slice(0, 3);
 
-    return [...highlighted, ...rest].slice(0, 3);
-  }, [products]);
-
-  const handleWishlistToggle = useCallback((event, product) => {
+  function handleWishlistToggle(event, product) {
     event.stopPropagation();
     toggleWishlist(product);
-    setWishlistVersion((version) => version + 1);
-  }, []);
+    setWishedIds(getWishlist().map((item) => String(item.id)));
+  }
 
   if (!featured.length) return null;
 

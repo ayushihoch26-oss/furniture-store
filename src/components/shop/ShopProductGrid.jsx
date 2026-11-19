@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { useState } from "react";
 import { Box, Typography, Button, ButtonBase, Skeleton } from "@mui/material";
 import { ChevronRight } from "@mui/icons-material";
 import { BROWN, GRAY_BG, BADGE_COLORS, PAGE_SIZE } from "../../features/shop/shopConstants";
@@ -6,31 +6,28 @@ import { EASE } from "../../features/shop/shopMotionStyles";
 import { onImgError } from "../../assets/furnitureImages";
 import { ColorDots } from "./ShopShared";
 
-function ProductCardBase({ product, onDetail }) {
+export function ProductCard({ product, onDetail }) {
   const [active, setActive] = useState(false);
 
-  const handlePointerEnter = useCallback((event) => {
+  function handlePointerEnter(event) {
     if (event.pointerType === "mouse") setActive(true);
-  }, []);
+  }
 
-  const handlePointerLeave = useCallback((event) => {
+  function handlePointerLeave(event) {
     if (event.pointerType === "mouse") setActive(false);
-  }, []);
+  }
 
-  const handleImageClick = useCallback((event) => {
+  function handleImageClick(event) {
     const type = event.nativeEvent.pointerType;
     if (type === "touch" || type === "pen") {
       setActive((previous) => !previous);
     }
-  }, []);
+  }
 
-  const handleDetailClick = useCallback(
-    (event) => {
-      event.stopPropagation();
-      onDetail(product);
-    },
-    [onDetail, product],
-  );
+  function handleDetailClick(event) {
+    event.stopPropagation();
+    onDetail(product);
+  }
 
   return (
     <Box
@@ -163,8 +160,6 @@ function ProductCardBase({ product, onDetail }) {
     </Box>
   );
 }
-
-export const ProductCard = memo(ProductCardBase);
 
 export function ProductSkeletons({ count = PAGE_SIZE }) {
   return (

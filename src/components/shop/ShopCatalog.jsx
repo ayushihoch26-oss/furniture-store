@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box, Typography, Button, IconButton, Drawer, InputBase, Select, MenuItem } from "@mui/material";
 import { Close, SearchOutlined, TuneOutlined, KeyboardArrowDown } from "@mui/icons-material";
-import { BROWN, PAGE_SIZE, SALE, SEARCH_DEBOUNCE_MS, SIDE, SORTS, log, scrollToProducts } from "../../features/shop/shopConstants";
+import { BROWN, PAGE_SIZE, SALE, SEARCH_DEBOUNCE_MS, SIDE, SORTS, scrollToProducts } from "../../features/shop/shopConstants";
 import { useShopFilters, useProductPage } from "../../hooks/shop/useShopProducts";
 import { QuickCategories, Sidebar } from "./ShopShared";
 import { ProductCard, ProductSkeletons, Pagination } from "./ShopProductGrid";
@@ -49,7 +49,6 @@ export default function ShopMain({ latest, onDetail }) {
     if (term === search) return undefined;
 
     const timer = setTimeout(() => {
-      log("search:", term || "(cleared)");
       setSearch(term);
       setPage(1);
     }, SEARCH_DEBOUNCE_MS);
@@ -57,18 +56,18 @@ export default function ShopMain({ latest, onDetail }) {
     return () => clearTimeout(timer);
   }, [searchInput, search]);
 
-  const categoryOptions = useMemo(() => {
-    const list = [...categories].sort((a, b) => a.name.localeCompare(b.name));
-
-    if (saleCount > 0) list.push({ name: SALE, count: saleCount });
-    return list;
-  }, [categories, saleCount]);
-
-  const quickCategories = useMemo(
-    () => [...categories].sort((a, b) => b.count - a.count).slice(0, 5),
-    [categories],
+  const categoryOptions = [...categories].sort((a, b) =>
+    a.name.localeCompare(b.name),
   );
+  if (saleCount > 0) {
+    categoryOptions.push({ name: SALE, count: saleCount });
+  }
 
+  const quickCategories = [...categories]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  // Keep the request options stable so the products hook fetches only on filter changes.
   const query = useMemo(
     () => ({
       page,
@@ -103,52 +102,44 @@ export default function ShopMain({ latest, onDetail }) {
   const gridKey = `${page}|${sort}|${cats.join(",")}|${search}|${priceRange ? priceRange.join("-") : ""
     }`;
 
-  const toggleCat = useCallback((value) => {
-    log("category toggled:", value);
+  function toggleCat(value) {
     setCats((previous) =>
       previous.includes(value)
         ? previous.filter((item) => item !== value)
         : [...previous, value],
     );
     setPage(1);
-  }, []);
+  }
 
-  const commitPrice = useCallback(
-    (value) => {
-      const changed =
-        value[0] !== priceBounds[0] || value[1] !== priceBounds[1];
+  function commitPrice(value) {
+    const changed =
+      value[0] !== priceBounds[0] || value[1] !== priceBounds[1];
 
-      log("price applied:", value);
-      setPriceRange(changed ? value : null);
-      setPage(1);
-    },
-    [priceBounds],
-  );
+    setPriceRange(changed ? value : null);
+    setPage(1);
+  }
 
-  const goToPage = useCallback((nextPage) => {
-    log("page clicked:", nextPage);
+  function goToPage(nextPage) {
     setPage(nextPage);
     scrollToProducts();
-  }, []);
+  }
 
   const activeFilters = cats.length + (priceRange ? 1 : 0) + (search ? 1 : 0);
 
-  const clearAll = useCallback(() => {
-    log("filters cleared");
+  function clearAll() {
     setPrice(priceBounds);
     setPriceRange(null);
     setCats([]);
     setSearchInput("");
     setSearch("");
     setPage(1);
-  }, [priceBounds]);
+  }
 
-  const selectQuickCategory = useCallback((name) => {
-    log("quick category:", name);
+  function selectQuickCategory(name) {
     setCats([name]);
     setPage(1);
     scrollToProducts();
-  }, []);
+  }
 
   const renderSidebar = (collapsible) => (
     <Sidebar
@@ -285,7 +276,6 @@ export default function ShopMain({ latest, onDetail }) {
               <Select
                 value={sort}
                 onChange={(event) => {
-                  log("sort changed:", event.target.value);
                   setSort(event.target.value);
                   setPage(1);
                 }}

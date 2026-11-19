@@ -86,8 +86,7 @@ export function useShopExtras() {
   return items;
 }
 
-// Fetch a page, cancel outdated requests, and prefetch the next page.
-
+// Load products whenever the selected filters or page change.
 export function useProductPage(query) {
   const [data, setData] = useState({
     products: [],
@@ -97,20 +96,16 @@ export function useProductPage(query) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const queryKey = JSON.stringify(query);
-
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-
-    const params = JSON.parse(queryKey);
 
     async function fetchProducts() {
       setLoading(true);
       setError("");
 
       try {
-        const response = await shopService.getProducts(params, {
+        const response = await shopService.getProducts(query, {
           signal: controller.signal,
         });
 
@@ -150,6 +145,7 @@ export function useProductPage(query) {
           totalPages,
         });
       } catch (err) {
+        // Ignore errors from requests that were cancelled during a filter change.
         if (
           !active ||
           controller.signal.aborted ||
@@ -181,7 +177,7 @@ export function useProductPage(query) {
       active = false;
       controller.abort();
     };
-  }, [queryKey]);
+  }, [query]);
 
   return { ...data, loading, error };
 }
