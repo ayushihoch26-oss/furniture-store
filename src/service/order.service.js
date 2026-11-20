@@ -18,9 +18,16 @@ export const getMyOrderById = async (id) => {
   return response.data?.data ?? response.data;
 };
 
-// Handle API errors
-export const getOrderError = (error) =>
-  error?.message || "Unable to process your order. Please try again.";
+// Turn an API error into a message that the checkout page can show.
+export const getOrderError = (error) => {
+  const message =
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message;
+
+  if (message) return message;
+  return "Unable to process your order. Please try again.";
+};
 
 export default {
   placeOrder,

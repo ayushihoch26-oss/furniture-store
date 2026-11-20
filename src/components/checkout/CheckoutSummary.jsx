@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Badge, Box, Divider, Typography, Button } from "@mui/material";
-import { GRAY_BG, LIGHT_BG, TAX_RATE } from "./checkoutConstants";
-import { formatMoney } from "./checkoutUtils";
+import { GRAY_BG, LIGHT_BG, TAX_RATE } from "../../features/checkout/checkoutConstants";
+import { formatMoney } from "../../utils/checkoutUtils";
 import { Field } from "./CheckoutFields";
 import { onImgError } from "../../assets/furnitureImages";
 
@@ -16,7 +16,14 @@ export const CheckoutSummary = memo(function CheckoutSummary({
 }) {
   return (
     <Box sx={{ bgcolor: LIGHT_BG, p: { xs: 2.5, lg: 4 } }}>
-      <Typography sx={{ fontSize: { xs: 18, lg: 22 }, fontWeight: 600, mb: 2.5 }}>
+      <Typography
+        sx={{
+          fontSize: { xs: 18, lg: 22 },
+          fontWeight: 600,
+          mb: 2.5,
+          color: "var(--c-111111)",
+        }}
+      >
         Order summary
       </Typography>
 
@@ -54,7 +61,9 @@ export const CheckoutSummary = memo(function CheckoutSummary({
             </Badge>
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: { xs: 14, lg: 15 } }}>
+              <Typography
+                sx={{ fontSize: { xs: 14, lg: 15 }, color: "var(--c-111111)" }}
+              >
                 {item.name}
               </Typography>
               <Typography sx={{ fontSize: 13, color: "var(--c-777777)" }}>
@@ -62,7 +71,13 @@ export const CheckoutSummary = memo(function CheckoutSummary({
               </Typography>
             </Box>
 
-            <Typography sx={{ fontSize: { xs: 14, lg: 15 }, fontWeight: 600 }}>
+            <Typography
+              sx={{
+                fontSize: { xs: 14, lg: 15 },
+                fontWeight: 600,
+                color: "var(--c-111111)",
+              }}
+            >
               {formatMoney(Number(item.price || 0) * Number(item.qty || 0))}
             </Typography>
           </Box>

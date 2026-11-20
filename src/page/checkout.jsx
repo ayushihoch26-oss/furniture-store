@@ -16,41 +16,38 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
-import profileService from "../service/profile.service";
 import { placeOrder, getOrderError } from "../service/order.service";
 import {
   BROWN,
-  CART_KEY,
-  INITIAL_FORM,
   LAST_STEP,
   LIGHT_BG,
   SIDE,
   STEPS,
   STEP_FIELDS,
-  COUPONS,
-  STEPPER_STYLES,
 } from "../features/checkout/checkoutConstants";
+import { STEPPER_STYLES } from "../styles/checkoutStyles";
 import {
   calculateTotals,
   formatCardExpiry,
   formatCardNumber,
   formatCvc,
   formatMoney,
-  loadCart,
   validateCheckout,
-} from "../features/checkout/checkoutUtils";
+} from "../utils/checkoutUtils";
+import { useCheckoutCart } from "../hooks/checkout/useCheckoutCart";
+import { useCheckoutForm } from "../hooks/checkout/useCheckoutForm";
 import {
   AddressFields,
   ContactFields,
   PaymentFields,
   ShippingFields,
-} from "../features/checkout/CheckoutFields";
-import { CheckoutSummary } from "../features/checkout/CheckoutSummary";
+} from "../components/checkout/CheckoutFields";
+import { CheckoutSummary } from "../components/checkout/CheckoutSummary";
 import {
   CheckoutHero,
   EmptyCart,
   OrderSuccess,
-} from "../features/checkout/CheckoutStates";
+} from "../components/checkout/CheckoutStates";
 
 function Checkout() {
   const theme = useTheme();
@@ -59,13 +56,21 @@ function Checkout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const stepperRef = useRef(null);
 
-  const [cartItems, setCartItems] = useState(loadCart);
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [errors, setErrors] = useState({});
+  const { cartItems, clearCart } = useCheckoutCart();
+  const {
+    form,
+    setForm,
+    errors,
+    setErrors,
+    coupon,
+    setCoupon,
+    appliedCoupon,
+    couponMessage,
+    updateField,
+    updateFormattedField,
+    applyCoupon,
+  } = useCheckoutForm(navigate, location);
   const [activeStep, setActiveStep] = useState(0);
-  const [coupon, setCoupon] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState("");
-  const [couponMessage, setCouponMessage] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [order, setOrder] = useState(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -73,110 +78,27 @@ function Checkout() {
   const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    function loadSavedCart() {
-      setCartItems(loadCart());
-    }
-
-    window.addEventListener("storage", loadSavedCart);
-    window.addEventListener("cart:changed", loadSavedCart);
-
-    return () => {
-      window.removeEventListener("storage", loadSavedCart);
-      window.removeEventListener("cart:changed", loadSavedCart);
-    };
-  }, []);
-
-  useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [order]);
-
-  useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      navigate("/login", { replace: true, state: { from: location } });
-      return;
-    }
-
-    let isCurrent = true;
-
-    async function loadProfile() {
-      try {
-        const user = await profileService.getMyProfile();
-
-        if (!isCurrent || !user) return;
-
-        setForm((oldForm) => ({
-          ...oldForm,
-          email: oldForm.email || user.email || "",
-          phone: oldForm.phone || user.phone || "",
-          firstName: oldForm.firstName || user.firstName || "",
-          lastName: oldForm.lastName || user.lastName || "",
-          address: oldForm.address || user.street || "",
-          apartment: oldForm.apartment || user.apartment || "",
-          city: oldForm.city || user.city || "",
-          state: oldForm.state || user.state || "",
-          zip: oldForm.zip || user.zip || "",
-          country: user.country || oldForm.country,
-        }));
-      } catch {
-        // The customer can enter the details manually.
-      }
-    }
-
-    loadProfile();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [navigate, location]);
-
-  const updateField = useCallback((fieldName) => (event) => {
-    setForm((oldForm) => ({ ...oldForm, [fieldName]: event.target.value }));
-    setErrors((oldErrors) =>
-      oldErrors[fieldName]
-        ? { ...oldErrors, [fieldName]: undefined }
-        : oldErrors,
-    );
-    setSubmitError("");
-  }, []);
-
-  const updateFormattedField = useCallback(
-    (fieldName, formatValue) => (event) => {
-      setForm((oldForm) => ({
-        ...oldForm,
-        [fieldName]: formatValue(event.target.value),
-      }));
-      setErrors((oldErrors) =>
-        oldErrors[fieldName]
-          ? { ...oldErrors, [fieldName]: undefined }
-          : oldErrors,
-      );
-      setSubmitError("");
-    },
-    [],
-  );
-
-  const applyCoupon = useCallback(() => {
-    if (appliedCoupon) {
-      setAppliedCoupon("");
-      setCoupon("");
-      setCouponMessage("");
-      return;
-    }
-
-    const code = coupon.trim().toUpperCase();
-
-    if (Object.hasOwn(COUPONS, code)) {
-      setAppliedCoupon(code);
-      setCouponMessage(`Code ${code} applied`);
-    } else {
-      setCouponMessage("Invalid discount code");
-    }
-  }, [appliedCoupon, coupon]);
 
   const totals = useMemo(
     () => calculateTotals(cartItems, appliedCoupon, form.shipping),
     [cartItems, appliedCoupon, form.shipping],
   );
+
+  function changeField(fieldName) {
+    return (event) => {
+      updateField(fieldName)(event);
+      setSubmitError("");
+    };
+  }
+
+  function changeFormattedField(fieldName, formatValue) {
+    return (event) => {
+      updateFormattedField(fieldName, formatValue)(event);
+      setSubmitError("");
+    };
+  }
 
   const itemCount = useMemo(
     () =>
@@ -228,7 +150,7 @@ function Checkout() {
 
     setActiveStep((oldStep) => Math.min(LAST_STEP, oldStep + 1));
     scrollToStepper();
-  }, [activeStep, form, focusFirstError, scrollToStepper]);
+  }, [activeStep, form, setErrors, focusFirstError, scrollToStepper]);
 
   async function submitOrder() {
     if (submitting) return;
@@ -301,9 +223,7 @@ function Checkout() {
         throw new Error("The server did not return an order ID.");
       }
 
-      localStorage.removeItem(CART_KEY);
-      window.dispatchEvent(new Event("cart:changed"));
-      setCartItems([]);
+      clearCart();
 
       setOrder({
         ...orderData,
@@ -337,7 +257,14 @@ function Checkout() {
 
   if (order) {
     return (
-      <Box sx={{ width: "100%", minHeight: "100vh" }}>
+        <Box
+          sx={{
+            width: "100%",
+            minHeight: "100vh",
+            bgcolor: "var(--c-ffffff)",
+            color: "var(--c-111111)",
+          }}
+        >
         <Navbar />
         <CheckoutHero />
         <OrderSuccess
@@ -353,7 +280,14 @@ function Checkout() {
 
   if (cartItems.length === 0) {
     return (
-      <Box sx={{ width: "100%", minHeight: "100vh" }}>
+        <Box
+          sx={{
+            width: "100%",
+            minHeight: "100vh",
+            bgcolor: "var(--c-ffffff)",
+            color: "var(--c-111111)",
+          }}
+        >
         <Navbar />
         <CheckoutHero />
         <EmptyCart />
@@ -365,7 +299,14 @@ function Checkout() {
   const isLastStep = activeStep === LAST_STEP;
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100vh", bgcolor: "var(--c-ffffff)" }}>
+    <Box
+      sx={{
+        width: "100%",
+        minHeight: "100vh",
+        bgcolor: "var(--c-ffffff)",
+        color: "var(--c-111111)",
+      }}
+    >
       <Navbar />
       <CheckoutHero />
 
@@ -421,14 +362,14 @@ function Checkout() {
             <ContactFields
               form={form}
               errors={errors}
-              onChange={updateField}
+              onChange={changeField}
             />
           )}
           {activeStep === 1 && (
             <AddressFields
               form={form}
               errors={errors}
-              onChange={updateField}
+              onChange={changeField}
             />
           )}
           {activeStep === 2 && (
@@ -438,8 +379,8 @@ function Checkout() {
             <PaymentFields
               form={form}
               errors={errors}
-              onChange={updateField}
-              onFormattedChange={updateFormattedField}
+              onChange={changeField}
+              onFormattedChange={changeFormattedField}
               formatCard={formatCardNumber}
               formatExpiry={formatCardExpiry}
               formatCvc={formatCvc}

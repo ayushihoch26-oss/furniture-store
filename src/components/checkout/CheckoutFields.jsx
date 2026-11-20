@@ -11,12 +11,12 @@ import { KeyboardArrowDown } from "@mui/icons-material";
 import {
   BROWN,
   COUNTRIES,
-  FIELD_STYLES,
   LIGHT_BG,
   PAYMENT_OPTIONS,
   SHIPPING_OPTIONS,
-} from "./checkoutConstants";
-import { formatMoney } from "./checkoutUtils";
+} from "../../features/checkout/checkoutConstants";
+import { FIELD_STYLES } from "../../styles/checkoutStyles";
+import { formatMoney } from "../../utils/checkoutUtils";
 
 export const Field = memo(function Field({ error, sx, ...props }) {
   return (
@@ -113,7 +113,13 @@ export function OptionCard({ selected, onClick, title, note, right }) {
         }}
       />
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: { xs: 14, lg: 15 }, fontWeight: 600 }}>
+        <Typography
+          sx={{
+            fontSize: { xs: 14, lg: 15 },
+            fontWeight: 600,
+            color: "var(--c-111111)",
+          }}
+        >
           {title}
         </Typography>
         <Typography sx={{ fontSize: { xs: 12, lg: 13 }, color: "var(--c-777777)" }}>
@@ -208,7 +214,13 @@ export function ShippingFields({ form, setForm }) {
             title={option.title}
             note={option.note}
             right={
-              <Typography sx={{ fontSize: 15, fontWeight: 600 }}>
+              <Typography
+                sx={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--c-111111)",
+                }}
+              >
                 {option.price === 0 ? "Free" : formatMoney(option.price)}
               </Typography>
             }

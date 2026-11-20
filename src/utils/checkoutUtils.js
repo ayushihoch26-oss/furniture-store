@@ -1,4 +1,9 @@
-import { COUPONS, TAX_RATE, SHIPPING_OPTIONS, CART_KEY } from "./checkoutConstants";
+import {
+  COUPONS,
+  TAX_RATE,
+  SHIPPING_OPTIONS,
+  CART_KEY,
+} from "../features/checkout/checkoutConstants";
 
 export const formatMoney = (value) =>
   `$${Number(value || 0).toLocaleString(undefined, {

@@ -72,38 +72,3 @@ export const INITIAL_FORM = {
   cvc: "",
   notes: "",
 };
-
-export const FIELD_STYLES = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 0,
-    bgcolor: "var(--c-ffffff)",
-    fontSize: { xs: 14, lg: 15 },
-    "& fieldset": { borderColor: "var(--c-d9d4cf)" },
-    "&:hover fieldset": { borderColor: BROWN },
-    "&.Mui-focused fieldset": { borderColor: BROWN, borderWidth: 1 },
-  },
-  "& .MuiInputLabel-root": { fontSize: { xs: 14, lg: 15 } },
-  "& .MuiInputLabel-root.Mui-focused": { color: BROWN },
-};
-
-export const STEPPER_STYLES = {
-  "& .MuiStepIcon-root": {
-    color: "#d6cfc8",
-    fontSize: { xs: 26, lg: 30 },
-  },
-  "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": {
-    color: BROWN,
-  },
-  "& .MuiStepLabel-label": {
-    fontSize: { xs: 12, lg: 14 },
-    color: "var(--c-888888)",
-  },
-  "& .MuiStepLabel-label.Mui-active, & .MuiStepLabel-label.Mui-completed": {
-    color: "var(--c-111111)",
-    fontWeight: 600,
-  },
-  "& .MuiStepConnector-line": {
-    borderColor: "var(--c-d6cfc8)",
-    borderTopWidth: 2,
-  },
-};

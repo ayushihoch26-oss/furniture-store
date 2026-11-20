@@ -3,8 +3,8 @@ import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { ShoppingBagOutlined } from "@mui/icons-material";
 import { Link } from "react-router-dom";
-import { BROWN, LIGHT_BG, SIDE } from "./checkoutConstants";
-import { formatMoney } from "./checkoutUtils";
+import { BROWN, LIGHT_BG, SIDE } from "../../features/checkout/checkoutConstants";
+import { formatMoney } from "../../utils/checkoutUtils";
 import { getOrderNumber } from "../../page/invoice";
 
 const InvoiceDialog = lazy(() => import("../../page/invoicedemo"));
@@ -18,6 +18,7 @@ export function CheckoutHero() {
           fontSize: { xs: 28, md: 34, lg: 40 },
           fontWeight: 600,
           lineHeight: 1.2,
+          color: "var(--c-111111)",
         }}
       >
         Checkout
