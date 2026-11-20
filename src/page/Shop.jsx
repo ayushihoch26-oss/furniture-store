@@ -14,13 +14,13 @@ import { EASE, ANIMATION_STYLES } from "../features/shop/shopMotionStyles";
 const Footer = lazy(() => import("../components/common/Footer"));
 
 export default function Shop() {
-  const extras = useShopExtras();
+  const featuredProducts = useShopExtras();
 
-  const [selected, setSelected] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
 
-  // Restore the cart when the page loads.
+  // Read the saved cart from local storage.
   const [cart, setCart] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("furniture_cart")) || [];
@@ -29,7 +29,7 @@ export default function Shop() {
     }
   });
 
-  // Save cart changes so they survive a page refresh.
+  // Save the cart whenever it changes.
   useEffect(() => {
     try {
       localStorage.setItem("furniture_cart", JSON.stringify(cart));
@@ -38,44 +38,45 @@ export default function Shop() {
     }
   }, [cart]);
 
-  function openDetail(product) {
-    setSelected(product);
-    setModalOpen(true);
+  function openProductDetails(product) {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
   }
 
-  function addToCart(product, color, qty) {
-    const key = `${product.id}-${color}`;
+  function addToCart(product, selectedColor, quantity) {
+    const cartKey = `${product.id}-${selectedColor}`;
 
-    setCart((previous) => {
-      const exists = previous.find((item) => item.key === key);
+    setCart((oldCart) => {
+      const oldItem = oldCart.find((item) => item.key === cartKey);
 
-      // If the same product and color are already in the cart, update its quantity.
-      if (exists) {
-        return previous.map((item) =>
-          item.key === key ? { ...item, qty: item.qty + qty } : item,
+      if (oldItem) {
+        return oldCart.map((item) =>
+          item.key === cartKey
+            ? { ...item, qty: item.qty + quantity }
+            : item,
         );
       }
 
       return [
-        ...previous,
+        ...oldCart,
         {
-          key,
+          key: cartKey,
           id: product.id,
           name: product.name,
           price: product.price,
           img: product.img,
-          color,
-          qty,
+          color: selectedColor,
+          qty: quantity,
         },
       ];
     });
 
-    setModalOpen(false);
-    setSnackbarOpen(true);
+    setIsModalOpen(false);
+    setIsMessageOpen(true);
   }
 
   function closeSnackbar() {
-    setSnackbarOpen(false);
+    setIsMessageOpen(false);
   }
 
   const cartCount = cart.reduce((total, item) => total + item.qty, 0);
@@ -94,13 +95,16 @@ export default function Shop() {
 
       <Navbar />
 
-      <ShopMain onDetail={openDetail} extras={extras} />
+      <ShopMain onDetail={openProductDetails} extras={featuredProducts} />
 
       <Services />
 
-      {extras.length > 0 && (
+      {featuredProducts.length > 0 && (
         <LazySection minHeight={480}>
-          <Featured products={extras} onDetail={openDetail} />
+          <Featured
+            products={featuredProducts}
+            onDetail={openProductDetails}
+          />
         </LazySection>
       )}
 
@@ -111,14 +115,14 @@ export default function Shop() {
       </LazySection>
 
       <ProductModal
-        product={selected}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        product={selectedProduct}
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onAddToCart={addToCart}
       />
 
       <Snackbar
-        open={snackbarOpen}
+        open={isMessageOpen}
         autoHideDuration={3000}
         onClose={closeSnackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}

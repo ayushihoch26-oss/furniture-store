@@ -14,43 +14,61 @@ export function useShopFilters() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
+    let isCurrent = true;
 
     async function loadFilters() {
       try {
+        const filterRequest = shopService.getFilters();
+        const saleRequest = shopService.getProducts({
+          onSale: true,
+          limit: 1,
+        });
+        const categoryRequest = shopService.getCategories();
+
         const [filters, sale, categoryList] = await Promise.all([
-          shopService.getFilters(),
-          shopService.getProducts({ onSale: true, limit: 1 }),
-          shopService.getCategories(),
+          filterRequest,
+          saleRequest,
+          categoryRequest,
         ]);
 
-        if (cancelled) return;
+        if (!isCurrent) return;
 
-        setCategories(
-          categoryList.map((category) => ({
+        const simpleCategories = categoryList.map((category) => {
+          return {
             name: category.name,
             count: Number(category.count) || 0,
-          })),
+          };
+        });
+
+        const smallestPrice = Math.floor(
+          Number(filters?.price?.min) || 0,
+        );
+        const largestPrice = Math.ceil(
+          Number(filters?.price?.max) || 0,
         );
 
-        setPriceBounds([
-          Math.floor(Number(filters?.price?.min) || 0),
-          Math.ceil(Number(filters?.price?.max) || 0),
-        ]);
-
+        setCategories(simpleCategories);
+        setPriceBounds([smallestPrice, largestPrice]);
         setSaleCount(Number(sale?.total) || 0);
-        setColorOptions(Array.isArray(filters?.colors) ? filters.colors : []);
+        setColorOptions(
+          Array.isArray(filters?.colors) ? filters.colors : [],
+        );
         setMaterialOptions(
           Array.isArray(filters?.materials) ? filters.materials : [],
         );
-        setBrandOptions(Array.isArray(filters?.brands) ? filters.brands : []);
-      } catch (err) {
-        if (!cancelled) {
-          console.error("[Shop] could not load filters:", err.message);
+        setBrandOptions(
+          Array.isArray(filters?.brands) ? filters.brands : [],
+        );
+      } catch (requestError) {
+        if (isCurrent) {
+          console.error(
+            "[Shop] Could not load filter options:",
+            requestError,
+          );
           setError("Could not load filter options.");
         }
       } finally {
-        if (!cancelled) {
+        if (isCurrent) {
           setLoading(false);
         }
       }
@@ -59,7 +77,7 @@ export function useShopFilters() {
     loadFilters();
 
     return () => {
-      cancelled = true;
+      isCurrent = false;
     };
   }, []);
 
@@ -75,14 +93,14 @@ export function useShopFilters() {
   };
 }
 
-// Fetch newest products for the sidebar and featured section.
+// Load the products shown in the featured section.
 export function useShopExtras() {
-  const [items, setItems] = useState([]);
+  const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isCurrent = true;
 
-    async function loadExtras() {
+    async function loadProducts() {
       try {
         const data = await shopService.getProducts({
           sort: "latest",
@@ -90,120 +108,120 @@ export function useShopExtras() {
           limit: 12,
         });
 
-        if (!cancelled) {
-          setItems((data?.products || []).map(normalizeProduct));
+        if (isCurrent) {
+          const simpleProducts = (data?.products || []).map(normalizeProduct);
+          setProducts(simpleProducts);
         }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("[Shop] could not load latest products:", err.message);
+      } catch (requestError) {
+        if (isCurrent) {
+          console.error(
+            "[Shop] Could not load featured products:",
+            requestError,
+          );
         }
       }
     }
 
-    loadExtras();
+    loadProducts();
 
     return () => {
-      cancelled = true;
+      isCurrent = false;
     };
   }, []);
 
-  return items;
+  return products;
 }
 
-// Load products whenever the selected filters or page change.
+// Load products again when the search or filters change.
 export function useProductPage(query) {
-  const [data, setData] = useState({
-    products: [],
-    total: 0,
-    totalPages: 0,
-  });
+  const [products, setProducts] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
+    const requestController = new AbortController();
+    let isCurrent = true;
 
-    async function fetchProducts() {
+    async function loadProducts() {
       setLoading(true);
       setError("");
 
       try {
         const response = await shopService.getProducts(query, {
-          signal: controller.signal,
+          signal: requestController.signal,
         });
 
-        if (!active) return;
+        if (!isCurrent) return;
 
-        // Support common API response shapes.
         const result = response?.data ?? response;
-        const payload = result?.data ?? result;
+        const productData = result?.data ?? result;
 
-        const products = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.products)
-            ? payload.products
-            : Array.isArray(payload?.rows)
-              ? payload.rows
-              : [];
-
-        const total =
-          Number(
-            payload?.total ??
-            payload?.count ??
-            result?.total ??
-            products.length,
-          ) || 0;
-
-        const totalPages =
-          Number(
-            payload?.totalPages ??
-            payload?.pages ??
-            result?.totalPages ??
-            Math.ceil(total / PAGE_SIZE),
-          ) || 0;
-
-        setData({
-          products: products.map(normalizeProduct),
-          total,
-          totalPages,
-        });
-      } catch (err) {
-        // Ignore errors from requests that were cancelled during a filter change.
-        if (
-          !active ||
-          controller.signal.aborted ||
-          err?.name === "AbortError" ||
-          err?.code === "ERR_CANCELED"
-        ) {
-          return;
+        let productList = [];
+        if (Array.isArray(productData)) {
+          productList = productData;
+        } else if (Array.isArray(productData?.products)) {
+          productList = productData.products;
+        } else if (Array.isArray(productData?.rows)) {
+          productList = productData.rows;
         }
 
-        console.error("[Shop] Product fetch failed:", err);
+        const productTotal =
+          Number(
+            productData?.total ??
+              productData?.count ??
+              result?.total ??
+              productList.length,
+          ) || 0;
 
-        setData({
-          products: [],
-          total: 0,
-          totalPages: 0,
-        });
+        const pageCount =
+          Number(
+            productData?.totalPages ??
+              productData?.pages ??
+              result?.totalPages ??
+              Math.ceil(productTotal / PAGE_SIZE),
+          ) || 0;
 
-        setError(errorMessage(err));
+        setProducts(productList.map(normalizeProduct));
+        setTotal(productTotal);
+        setTotalPages(pageCount);
+      } catch (requestError) {
+        const wasCancelled =
+          !isCurrent ||
+          requestController.signal.aborted ||
+          requestError?.name === "AbortError" ||
+          requestError?.code === "ERR_CANCELED";
+
+        if (wasCancelled) return;
+
+        console.error("[Shop] Product request failed:", requestError);
+        setProducts([]);
+        setTotal(0);
+        setTotalPages(0);
+        setError(errorMessage(requestError));
       } finally {
-        if (active && !controller.signal.aborted) {
+        if (isCurrent && !requestController.signal.aborted) {
           setLoading(false);
         }
       }
     }
 
-    fetchProducts();
+    loadProducts();
 
     return () => {
-      active = false;
-      controller.abort();
+      isCurrent = false;
+      requestController.abort();
     };
   }, [query]);
 
-  return { ...data, loading, error };
+  return {
+    products,
+    total,
+    totalPages,
+    loading,
+    error,
+  };
 }
 
 // ---------------------------------------------------------------------------

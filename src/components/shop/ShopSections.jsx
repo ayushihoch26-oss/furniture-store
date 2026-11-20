@@ -77,26 +77,26 @@ export function Services() {
 // Featured products
 // ---------------------------------------------------------------------------
 export function Featured({ products, onDetail }) {
-  const [wishedIds, setWishedIds] = useState(() =>
-    getWishlist().map((item) => String(item.id)),
-  );
+  const [wishListIds, setWishListIds] = useState(() => {
+    return getWishlist().map((item) => String(item.id));
+  });
 
-  const highlighted = products.filter(
-    (product) => product.isSale || product.isNew,
-  );
-  const highlightedIds = highlighted.map((product) => product.id);
-  const remainingProducts = products.filter(
-    (product) => !highlightedIds.includes(product.id),
-  );
-  const featured = [...highlighted, ...remainingProducts].slice(0, 3);
+  const saleOrNew = products.filter((product) => {
+    return product.isSale || product.isNew;
+  });
+  const saleOrNewIds = saleOrNew.map((product) => product.id);
+  const normalProducts = products.filter((product) => {
+    return !saleOrNewIds.includes(product.id);
+  });
+  const featuredProducts = [...saleOrNew, ...normalProducts].slice(0, 3);
 
   function handleWishlistToggle(event, product) {
     event.stopPropagation();
     toggleWishlist(product);
-    setWishedIds(getWishlist().map((item) => String(item.id)));
+    setWishListIds(getWishlist().map((item) => String(item.id)));
   }
 
-  if (!featured.length) return null;
+  if (featuredProducts.length === 0) return null;
 
   return (
     <Box sx={{ px: SIDE, py: SECTION_PY }}>
@@ -108,8 +108,8 @@ export function Featured({ products, onDetail }) {
           gap: { xs: 3, md: "16px", lg: "24px" },
         }}
       >
-        {featured.map((product, index) => {
-          const wished = wishedIds.includes(String(product.id));
+        {featuredProducts.map((product, index) => {
+          const isWished = wishListIds.includes(String(product.id));
 
           return (
             <Reveal key={product.id} delay={stagger(index, 150)}>
@@ -155,7 +155,7 @@ export function Featured({ products, onDetail }) {
                       width: { xs: 32, lg: 44 },
                       height: { xs: 32, lg: 44 },
                       bgcolor: "var(--c-ffffff)",
-                      color: wished ? "#FF5252" : "var(--c-333333)",
+                      color: isWished ? "#FF5252" : "var(--c-333333)",
                       transition: "transform .25s ease",
                       "&:hover": {
                         bgcolor: "var(--c-ffffff)",
@@ -163,7 +163,7 @@ export function Featured({ products, onDetail }) {
                       },
                     }}
                   >
-                    {wished ? (
+                    {isWished ? (
                       <Favorite
                         sx={{
                           fontSize: { xs: 17, lg: 22 },
