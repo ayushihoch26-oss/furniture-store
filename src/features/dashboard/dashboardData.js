@@ -1,8 +1,8 @@
 import { U, PRODUCT as PRODUCT_IMAGES } from "../../assets/furnitureImages";
-import icon1 from "../../assets/Logo.svg";
-import icon2 from "../../assets/Logo (1).svg";
-import icon3 from "../../assets/Logo (2).svg";
-import icon4 from "../../assets/Logo (3).svg";
+import icon1 from "../../assets/images/Logo.svg";
+import icon2 from "../../assets/images/Logo (1).svg";
+import icon3 from "../../assets/images/Logo (2).svg";
+import icon4 from "../../assets/images/Logo (3).svg";
 
 
 export const PRODUCT = {
@@ -26,8 +26,6 @@ export const PRODUCT = {
   simpleChair: PRODUCT_IMAGES[2],
 };
 // ---------- Images ----------
-
-export const DOTS = ["#BDBDBD", "#A79186", "#9A9AAE"];
 
 // ---------- Data ----------
 export const HERO_CARDS = [

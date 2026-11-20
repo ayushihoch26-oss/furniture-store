@@ -1,10 +1,11 @@
 import { CreditCardOutlined, Inventory2Outlined, ContactSupportOutlined } from "@mui/icons-material";
-import { PAGE_LIMIT } from "../../service/shop.service";
-import Armchairs from "../../assets/shop-icon1.png";
-import Cabinets from "../../assets/shop-icon2.png";
-import Sofa from "../../assets/shop-icon3.png";
-import Chair from "../../assets/shop-icon4.png";
-import Decor from "../../assets/shop-icon5.png";
+import { PAGE_LIMIT } from "./services/shop.service";
+import { COLOR_DOTS } from "../../config/constants";
+import Armchairs from "../../assets/images/shop-icon1.png";
+import Cabinets from "../../assets/images/shop-icon2.png";
+import Sofa from "../../assets/images/shop-icon3.png";
+import Chair from "../../assets/images/shop-icon4.png";
+import Decor from "../../assets/images/shop-icon5.png";
 
 export const BROWN = "#947458";
 export const GRAY_BG = "var(--c-f4f2f0)";
@@ -33,7 +34,7 @@ export const OPTION_TEXT = {
 };
 
 export const ROW_PY = { xs: "4px", lg: "6px" };
-export const DOTS = ["#BDBDBD", "#A79186", "#9A9AAE"];
+export const DOTS = COLOR_DOTS;
 
 export const CATEGORY_ICONS = {
   armchairs: Armchairs,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import SaleTicker from "../SaleTicker";
+import SaleTicker from "./SaleTicker";
 import {
   Box,
   Typography,
@@ -25,12 +25,12 @@ import {
   LoginOutlined,
 } from "@mui/icons-material";
 
-import { getToken, getCurrentUser } from "../../service/login.service";
-import { getWishlist, fetchWishlist } from "../../service/wishlist.service";
-import shopService from "../../service/shop.service";
-import users from "../../assets/user.svg";
+import { getToken, getCurrentUser } from "../../features/auth/services/login.service";
+import { getWishlist, fetchWishlist } from "../../features/wishlist/services/wishlist.service";
+import shopService from "../../features/shop/services/shop.service";
+import users from "../../assets/images/user.svg";
 import { ThemeModeContext } from "../../theme/ThemeModeContext";
-import logoImage from "../../assets/cabinet 1.svg";
+import logoImage from "../../assets/images/cabinet 1.svg";
 
 const BROWN = "#947458";
 const CART_KEY = "furniture_cart";

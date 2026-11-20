@@ -1,7 +1,7 @@
 import { Box, Typography, InputBase, Button, IconButton } from "@mui/material";
 //inputBase use in input field and in this page apply in email
 import { Facebook, X as XIcon, Instagram, YouTube } from "@mui/icons-material";
-import logoImage from "../../assets/cabinet 1.svg";
+import logoImage from "../../assets/images/cabinet 1.svg";
 import { NavLink } from "react-router-dom";
 
 const SIDE = { xs: 2, md: "10%" };

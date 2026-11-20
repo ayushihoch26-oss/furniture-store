@@ -1,9 +1,9 @@
 import { Chair, EventSeat, Kitchen, Weekend } from "@mui/icons-material";
-import bg1 from "../../assets/aboutus-bg.jpg";
-import sofa from "../../assets/banner.jpg";
-import featureleft from "../../assets/aboutpage-fea.png";
-import images from "../../assets/images.jpg";
-import { createAboutImage } from "../../utils/aboutImages";
+import bg1 from "../../assets/images/aboutus-bg.jpg";
+import sofa from "../../assets/images/banner.jpg";
+import featureleft from "../../assets/images/aboutpage-fea.png";
+import images from "../../assets/images/images.jpg";
+import { createAboutImage } from "./aboutImages";
 
 export const IMAGES = {
   hero: { src: bg1, fallback: bg1 },

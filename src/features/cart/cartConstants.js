@@ -19,10 +19,3 @@ export const ROW_COLUMNS = {
   xs: "1fr auto",
   md: "minmax(0, 1fr) 110px 140px 110px 36px",
 };
-
-export function formatCartMoney(value) {
-  return `$${Number(value || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}

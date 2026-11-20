@@ -1,5 +1,5 @@
 import { PlaceOutlined, PhoneOutlined, MailOutlined } from "@mui/icons-material";
-import bg from "../../assets/contactus-bg.jpg";
+import bg from "../../assets/images/contactus-bg.jpg";
 
 export const ADDRESS = "60 Fremont Ave. Hamden, CT 06514";
 

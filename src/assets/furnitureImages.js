@@ -34,18 +34,18 @@ export const ROOM = {
   lounge: "photo-1600210492486-724fe5c67fb0",
 };
 
-import stool from "../assets/products/stool.png";
-import papasan from "../assets/products/papasan.png";
-import classicChair from "../assets/products/simplechair.png";
-import eggChair from "../assets/products/eggchair.png";
-import chaise from "../assets/products/chair.png";
-import modernChair from "../assets/products/modernchair.png";
-import coffeeTable from "../assets/products/coffeetable.png";
-import Table from "../assets/products/table.png";
-import nightstand from "../assets/products/night-lamp-stand.png";
-import bed from "../assets/products/bed.png";
-import cabinet from "../assets/products/cabinet.png";
-import sofa from "../assets/products/sofa.png";
+import stool from "./products/stool.png";
+import papasan from "./products/papasan.png";
+import classicChair from "./products/simplechair.png";
+import eggChair from "./products/eggchair.png";
+import chaise from "./products/chair.png";
+import modernChair from "./products/modernchair.png";
+import coffeeTable from "./products/coffeetable.png";
+import Table from "./products/table.png";
+import nightstand from "./products/night-lamp-stand.png";
+import bed from "./products/bed.png";
+import cabinet from "./products/cabinet.png";
+import sofa from "./products/sofa.png";
 // Product photos. Swap any value here and all pages update.
 
 // Keep the PRODUCT array for components that need an array.
@@ -88,4 +88,4 @@ export const PRODUCTS = {
 };
 
 // Hero background
-export const HERO_BG = "../assets/bg.jpg";
+export const HERO_BG = "./images/bg.jpg";
