@@ -1,4 +1,4 @@
-import api from "../../../api/api";
+import api from "../../../../api/api";
 
 // Uses the existing users API (router mounted at /api/users):
 //   POST /users/users            -> admin list (page, limit, search, role, dates)

@@ -1,6 +1,6 @@
-import api from "../../../api/api";
+import api from "../../../../api/api";
 
-import { API_BASE_URL } from "../../../config/constants";
+import { API_BASE_URL } from "../../../../config/constants";
 
 const API_BASE = `${API_BASE_URL}/contactus`;
 
