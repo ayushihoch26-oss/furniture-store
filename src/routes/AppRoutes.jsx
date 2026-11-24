@@ -24,6 +24,12 @@ export const WishlistPage = lazy(() => import("../features/wishlist/pages/Wishli
 
 // admin pages
 export const AdminDashboardPage = lazy(() => import("../features/admin/dashboard/pages/AdminDashboardPage"));
+export const AdminContactPage = lazy(
+  () => import("../features/admin/contact/pages/AdminContactPage"),
+);
+export const AdminCartPage = lazy(
+  () => import("../features/admin/cart/pages/AdminCartPage"),
+);
 
 // loading component
 export const RouteLoading = () => {
@@ -67,6 +73,8 @@ const userRoutes = [
 const adminRoutes = [
   { path: "/admin", element: <AdminDashboardPage /> },
   { path: "/admin/*", element: <Navigate to="/admin" replace /> },
+  { path: "/admin/contactus", element: <AdminContactPage /> },
+  { path: "/admin/cart", element: <AdminCartPage /> }
 ];
 
 // main app routes

@@ -1,96 +1,21 @@
-import { useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 
-import { sendContactMessage } from "../services/contact.service";
-import { EMPTY_FORM } from "../contactData";
+import useContactForm from "../hooks/useContactForm";
 import { BROWN } from "../contactStyles";
 import ContactField from "./ContactField";
 import Reveal from "./ContactReveal";
 
 export default function ContactForm() {
-  const [formValues, setFormValues] = useState(EMPTY_FORM);
-  const [formErrors, setFormErrors] = useState({});
-  const [messageSent, setMessageSent] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-
-  function handleChange(event) {
-    const fieldName = event.target.name;
-    const fieldValue = event.target.value;
-
-    setFormValues((previousValues) => ({
-      ...previousValues,
-      [fieldName]: fieldValue,
-    }));
-
-    setFormErrors((previousErrors) => ({
-      ...previousErrors,
-      [fieldName]: "",
-    }));
-
-    setMessageSent(false);
-    setSubmitError("");
-  }
-
-  function validateForm() {
-    const errors = {};
-
-    if (!formValues.name.trim()) {
-      errors.name = "Please enter your name";
-    }
-
-    if (!/^\S+@\S+\.\S+$/.test(formValues.email.trim())) {
-      errors.email = "Please enter a valid email";
-    }
-
-    if (!formValues.message.trim()) {
-      errors.message = "Please enter a message";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (isSending) {
-      return;
-    }
-
-    setMessageSent(false);
-    setSubmitError("");
-
-    const formIsValid = validateForm();
-
-    if (!formIsValid) {
-      return;
-    }
-
-    setIsSending(true);
-
-    try {
-      await sendContactMessage({
-        name: formValues.name,
-        email: formValues.email,
-        phone: formValues.phone,
-        message: formValues.message,
-      });
-
-      setMessageSent(true);
-      setFormValues({ ...EMPTY_FORM });
-      setFormErrors({});
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        "Unable to send your message. Please try again.";
-
-      setSubmitError(errorMessage);
-    } finally {
-      setIsSending(false);
-    }
-  }
+  const {
+    formValues,
+    formErrors,
+    messageSent,
+    isSending,
+    submitError,
+    handleChange,
+    handleSubmit,
+  } = useContactForm();
 
   return (
     <Box
