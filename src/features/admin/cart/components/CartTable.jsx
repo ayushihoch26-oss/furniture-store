@@ -334,7 +334,6 @@ export default function CartTable({
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
-                setPage(1);
               }}
               placeholder="Search cart report"
               sx={{

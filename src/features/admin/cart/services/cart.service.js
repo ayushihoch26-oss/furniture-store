@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "../../../../config/constants";
 
+export const CART_SEARCH_DEBOUNCE_MS = 500;
+
 async function cartRequest(path, options = {}) {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  CART_SEARCH_DEBOUNCE_MS,
   deleteCart,
   getCarts,
   updateCartStatus,
@@ -20,6 +21,7 @@ export default function useCartTable({
 }) {
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [filterAnchor, setFilterAnchor] = useState(null);
   const [minItems, setMinItems] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -34,6 +36,15 @@ export default function useCartTable({
   const [notice, setNotice] = useState("");
   const currentPage = Math.max(Number(page) || 1, 1);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, CART_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search, setPage]);
+
   const fetchCarts = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -43,7 +54,7 @@ export default function useCartTable({
         page: currentPage,
         limit: PAGE_SIZE,
         status: tab,
-        search,
+        search: debouncedSearch,
         minItems,
         fromDate,
         toDate,
@@ -80,7 +91,7 @@ export default function useCartTable({
   }, [
     currentPage,
     tab,
-    search,
+    debouncedSearch,
     minItems,
     fromDate,
     toDate,
