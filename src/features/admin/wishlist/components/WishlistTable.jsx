@@ -50,7 +50,6 @@ function formatPrice(value) {
 }
 
 export default function WishlistTable({
-  wishlists = [],
   setWishlists,
   selected = [],
   setSelected,
@@ -160,13 +159,13 @@ export default function WishlistTable({
           table.userId ||
           table.productId ||
           table.sort !== "default") && (
-          <Button
-            onClick={table.clearFilters}
-            sx={{ color: BROWN, textTransform: "none" }}
-          >
-            Clear
-          </Button>
-        )}
+            <Button
+              onClick={table.clearFilters}
+              sx={{ color: BROWN, textTransform: "none" }}
+            >
+              Clear
+            </Button>
+          )}
       </Box>
 
       {table.error && (
