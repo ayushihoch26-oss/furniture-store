@@ -30,6 +30,17 @@ export const AdminContactPage = lazy(
 export const AdminCartPage = lazy(
   () => import("../features/admin/cart/pages/AdminCartPage"),
 );
+export const AdminCustomersPage = lazy(
+  () => import("../features/admin/customers/pages/AdminCustomersPage"),
+);
+
+export const AdminWishlistPage = lazy(
+  () => import("../features/admin/wishlist/pages/AdminWishlistPage"),
+);
+
+export const AdminProductsPage = lazy(
+  () => import("../features/admin/products/pages/AdminProductsPage"),
+);
 
 // loading component
 export const RouteLoading = () => {
@@ -74,7 +85,10 @@ const adminRoutes = [
   { path: "/admin", element: <AdminDashboardPage /> },
   { path: "/admin/*", element: <Navigate to="/admin" replace /> },
   { path: "/admin/contactus", element: <AdminContactPage /> },
-  { path: "/admin/cart", element: <AdminCartPage /> }
+  { path: "/admin/cart", element: <AdminCartPage /> },
+  { path: "/admin/customers", element: <AdminCustomersPage /> },
+  { path: "/admin/wishlist", element: <AdminWishlistPage /> },
+  { path: "/admin/products", element: <AdminProductsPage /> }
 ];
 
 // main app routes
