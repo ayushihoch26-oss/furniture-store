@@ -1,108 +1,116 @@
+// src/features/admin/categories/services/category.service.js
+//
+// Admin + public category API calls.
+// Every route in the backend is a POST (see category.routes.js).
+//
+//   POST /products/category/options          public   -> [{ id, name, count }]
+//   POST /products/admin/category/list       admin    -> { categories, total, page, limit, totalPages }
+//   POST /products/admin/category/stats      admin    -> { total, active, inactive }
+//   POST /products/admin/category/create     admin    -> category
+//   POST /products/admin/category/update/:id admin    -> category
+//   POST /products/admin/category/delete/:id admin    -> { success, message }
+//   POST /products/admin/category/:id        admin    -> category
+//
+// A category looks like:
+//   { id, name, description, image, isActive, productCount, createdAt }
+
 import api from "../../../../api/api";
 
-const BASE_URL = "/categories";
-const ADMIN_URL = `${BASE_URL}/admin/category`;
+// Where the category router is mounted (same prefix as product.service.js).
+const BASE = "/categories";
+const ADMIN = `${BASE}/admin/category`;
 
-// category status and sorting
+// Values the backend validator accepts.
 export const CATEGORY_STATUSES = ["all", "active", "inactive"];
-
 export const CATEGORY_SORTS = ["latest", "oldest", "name_asc", "name_desc"];
-
 export const CATEGORY_NAME_MAX_LENGTH = 60;
 export const CATEGORY_MAX_PAGE_SIZE = 100;
 
-// check category id
-export const validateCategoryId = (id) => {
-  const categoryId = Number(id);
+// ---------- helpers ----------
 
-  if (!Number.isInteger(categoryId) || categoryId <= 0) {
-    throw new Error("Category id must be a positive number");
-  }
-
-  return categoryId;
-};
-
-// remove empty values
-export const cleanParams = (params = {}) => {
-  return Object.fromEntries(
+// Drop empty values so we never send `search: ""`, `status: undefined`, etc.
+const cleanParams = (params = {}) =>
+  Object.fromEntries(
     Object.entries(params).filter(
       ([, value]) => value !== undefined && value !== null && value !== "",
     ),
   );
+
+// The backend rejects ids that are not positive integers (400), so fail fast.
+const assertId = (id) => {
+  const value = Number(id);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error("Category id must be a positive number");
+  }
+
+  return value;
 };
 
-// get category options
+// ---------- public ----------
+
+// Active categories for dropdowns (e.g. the product form).
 export const getCategoryOptions = async () => {
-  const response = await api.post(`${BASE_URL}/category/options`);
-
-  return Array.isArray(response.data) ? response.data : [];
+  const { data } = await api.post(`${BASE}/category/options`);
+  return Array.isArray(data) ? data : [];
 };
 
-// get all categories
+// ---------- admin ----------
+
+// Paginated list. Accepts: { search, status, sort, page, limit }
 export const getCategories = async (params = {}) => {
-  const response = await api.post(`${ADMIN_URL}/list`, cleanParams(params));
-
-  const data = response.data || {};
+  const { data } = await api.post(`${ADMIN}/list`, cleanParams(params));
 
   return {
-    categories: data.categories || [],
-    total: Number(data.total) || 0,
-    page: Number(data.page) || 1,
-    limit: Number(data.limit) || 0,
-    totalPages: Number(data.totalPages) || 1,
+    categories: data?.categories ?? [],
+    total: Number(data?.total) || 0,
+    page: Number(data?.page) || 1,
+    limit: Number(data?.limit) || 0,
+    totalPages: Number(data?.totalPages) || 1,
   };
 };
 
-// get category stats
+// { total, active, inactive }
 export const getCategoryStats = async () => {
-  const response = await api.post(`${ADMIN_URL}/stats`);
-  const data = response.data || {};
+  const { data } = await api.post(`${ADMIN}/stats`);
 
   return {
-    total: Number(data.total) || 0,
-    active: Number(data.active) || 0,
-    inactive: Number(data.inactive) || 0,
+    total: Number(data?.total) || 0,
+    active: Number(data?.active) || 0,
+    inactive: Number(data?.inactive) || 0,
   };
 };
 
-// get category by id
 export const getCategoryById = async (id) => {
-  const categoryId = validateCategoryId(id);
-  const response = await api.post(`${ADMIN_URL}/${categoryId}`);
-
-  return response.data;
+  const { data } = await api.post(`${ADMIN}/${assertId(id)}`);
+  return data;
 };
 
-// create category
+// payload: { name, description?, image?, isActive? }
 export const createCategory = async (payload) => {
-  const response = await api.post(`${ADMIN_URL}/create`, payload);
-
-  return response.data;
+  const { data } = await api.post(`${ADMIN}/create`, payload);
+  return data;
 };
 
-// update category
+// payload: any of { name, description, image, isActive }
 export const updateCategory = async (id, payload) => {
-  const categoryId = validateCategoryId(id);
-
-  const response = await api.post(`${ADMIN_URL}/update/${categoryId}`, payload);
-
-  return response.data;
+  const { data } = await api.post(`${ADMIN}/update/${assertId(id)}`, payload);
+  return data;
 };
 
-// delete category
+// Fails with 400 if products still use the category.
 export const deleteCategory = async (id) => {
-  const categoryId = validateCategoryId(id);
-
-  const response = await api.post(`${ADMIN_URL}/delete/${categoryId}`);
-
-  return response.data;
+  const { data } = await api.post(`${ADMIN}/delete/${assertId(id)}`);
+  return data;
 };
 
-// short names
+// ---------- short aliases ----------
+// Pages import these names (named import or via the default object),
+// so both the short and the long names are exported.
 export const getOptions = getCategoryOptions;
 export const getStats = getCategoryStats;
 
-// default export
+// ---------- default export ----------
 const categoryService = {
   getOptions,
   getCategories,

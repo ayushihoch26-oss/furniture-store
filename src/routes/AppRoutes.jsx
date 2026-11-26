@@ -42,6 +42,14 @@ export const AdminProductsPage = lazy(
   () => import("../features/admin/products/pages/AdminProductsPage"),
 );
 
+export const AdminCategoriesPage = lazy(
+  () => import("../features/admin/categories/pages/AdminCategoriesPage"),
+);
+
+export const AdminOrdersPage = lazy(
+  () => import("../features/admin/orders/pages/AdminOrdersPage"),
+);
+
 // loading component
 export const RouteLoading = () => {
   return (
@@ -88,7 +96,9 @@ const adminRoutes = [
   { path: "/admin/cart", element: <AdminCartPage /> },
   { path: "/admin/customers", element: <AdminCustomersPage /> },
   { path: "/admin/wishlist", element: <AdminWishlistPage /> },
-  { path: "/admin/products", element: <AdminProductsPage /> }
+  { path: "/admin/products", element: <AdminProductsPage /> },
+  { path: "/admin/category", element: <AdminCategoriesPage /> },
+  { path: "/admin/orderManagement", element: <AdminOrdersPage /> }
 ];
 
 // main app routes
