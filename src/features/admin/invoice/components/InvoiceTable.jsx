@@ -23,7 +23,6 @@ import {
 import {
   BROWN,
   DESC_FIRST_FIELDS,
-  PAGE_SIZE_OPTIONS,
   PAYMENT,
   SORT_OPTIONS,
   TABLE_COLUMNS,
@@ -395,36 +394,27 @@ export default function InvoiceTable({
       </Box>
 
       {/* Pagination */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 2,
-          mt: 4,
-        }}
-      >
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBack />}
-          disabled={page <= 1}
-          onClick={() => onFiltersChange({ page: page - 1 })}
-          sx={outlinedNavSx}
-        >
-          Previous
-        </Button>
-
+      <Box sx={{ mt: 4 }}>
         <Box
           sx={{
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            gap: 2,
             flexWrap: "wrap",
-            justifyContent: "center",
+            gap: 2,
           }}
         >
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBack />}
+            disabled={page <= 1}
+            onClick={() => onFiltersChange({ page: page - 1 })}
+            sx={outlinedNavSx}
+          >
+            Previous
+          </Button>
+
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
             {visiblePages.map((number, index) => (
               <Button
                 key={`${number}-${index}`}
@@ -450,41 +440,22 @@ export default function InvoiceTable({
             ))}
           </Box>
 
-          <Typography sx={{ fontSize: 12, color: theme.muted }}>
-            {from}-{to} of {totalItems}
-          </Typography>
-
-          <TextField
-            select
-            size="small"
-            value={limit}
-            onChange={(e) => onFiltersChange({ limit: Number(e.target.value) })}
-            slotProps={{
-              select: { MenuProps: { slotProps: { paper: { sx: paperSx } } } },
-            }}
-            sx={{
-              width: 100,
-              ...fieldSx,
-              "& .MuiInputBase-root": { color: theme.text, fontSize: 13, height: 36 },
-            }}
+          <Button
+            variant="outlined"
+            endIcon={<ArrowForward />}
+            disabled={page >= totalPages}
+            onClick={() => onFiltersChange({ page: page + 1 })}
+            sx={outlinedNavSx}
           >
-            {PAGE_SIZE_OPTIONS.map((n) => (
-              <MenuItem key={n} value={n}>
-                {n} / page
-              </MenuItem>
-            ))}
-          </TextField>
+            Next
+          </Button>
         </Box>
 
-        <Button
-          variant="outlined"
-          endIcon={<ArrowForward />}
-          disabled={page >= totalPages}
-          onClick={() => onFiltersChange({ page: page + 1 })}
-          sx={outlinedNavSx}
+        <Typography
+          sx={{ mt: 2.5, textAlign: "center", fontSize: 12, color: theme.muted }}
         >
-          Next
-        </Button>
+          Showing {from}–{to} of {totalItems} invoices · Page {page} of {totalPages}
+        </Typography>
       </Box>
     </TableCard>
   );
