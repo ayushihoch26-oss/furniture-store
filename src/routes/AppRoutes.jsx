@@ -54,6 +54,10 @@ export const AdminInvoicePage = lazy(
   () => import("../features/admin/invoice/pages/AdminInvoicePage"),
 );
 
+export const AdminRolesPage = lazy(
+  () => import("../features/admin/roles/pages/AdminRolesPage"),
+);
+
 // loading component
 export const RouteLoading = () => {
   return (
@@ -104,6 +108,7 @@ const adminRoutes = [
   { path: "/admin/category", element: <AdminCategoriesPage /> },
   { path: "/admin/orderManagement", element: <AdminOrdersPage /> },
   { path: "/admin/invoice", element: <AdminInvoicePage /> },
+  { path: "/admin/roles", element: <AdminRolesPage /> }
 ];
 
 // main app routes
