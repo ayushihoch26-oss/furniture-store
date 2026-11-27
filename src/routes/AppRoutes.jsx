@@ -50,6 +50,10 @@ export const AdminOrdersPage = lazy(
   () => import("../features/admin/orders/pages/AdminOrdersPage"),
 );
 
+export const AdminInvoicePage = lazy(
+  () => import("../features/admin/invoice/pages/AdminInvoicePage"),
+);
+
 // loading component
 export const RouteLoading = () => {
   return (
@@ -98,7 +102,8 @@ const adminRoutes = [
   { path: "/admin/wishlist", element: <AdminWishlistPage /> },
   { path: "/admin/products", element: <AdminProductsPage /> },
   { path: "/admin/category", element: <AdminCategoriesPage /> },
-  { path: "/admin/orderManagement", element: <AdminOrdersPage /> }
+  { path: "/admin/orderManagement", element: <AdminOrdersPage /> },
+  { path: "/admin/invoice", element: <AdminInvoicePage /> },
 ];
 
 // main app routes
